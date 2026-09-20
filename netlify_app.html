@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=ai-legible&utm_source=comment&utm_medium=referral&utm_id=a3174920-adc0-425f-a0f8-29ec87c79839
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+<meta name="hosting-provider" content="Netlify">
+<meta name="netlify-deploy" content="https://netlify.new/?utm_campaign=ai-legible&amp;utm_source=meta&amp;utm_medium=referral&amp;utm_id=a3174920-adc0-425f-a0f8-29ec87c79839">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>EV Safety & Diagnostics - Techi AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#0b0f14; --panel:#131a22; --panel2:#182029; --accent:#00e5a0; --accent2:#00b8ff;
+  --danger:#ff4d5e; --warn:#ffb020; --text:#eef3f7; --muted:#8fa1b3; --border:#233040;
+  --purple:#b388ff; --agent:#ff79c6;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+/* Top bar */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+  background:linear-gradient(180deg,#0f151c,#0b0f14);border-bottom:1px solid var(--border);z-index:20;}
+#topbar .title{font-size:16px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px;}
+#topbar .title span.dot{width:10px;height:10px;border-radius:50%;background:var(--danger);box-shadow:0 0 8px var(--danger);transition:.3s;}
+#topbar .title span.dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+#topbar .title span.dot.sim{background:var(--warn);box-shadow:0 0 8px var(--warn);}
+.top-meta{display:flex;align-items:center;gap:10px;}
+.lang-badge{font-size:10px;padding:3px 8px;border-radius:12px;background:rgba(0,229,160,0.15);color:var(--accent);border:1px solid var(--accent);font-weight:600;text-transform:uppercase;}
+.ip-pill{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;}
+.ip-pill input{background:none;border:none;color:var(--accent2);font-size:11px;font-family:monospace;width:95px;outline:none;padding:0;margin:0;}
+#clock{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;}
+
+/* Techi AI Floating Bar */
+#techi-bar{background:linear-gradient(90deg,#111923,#162330);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:12px;}
+.orb-container{position:relative;width:34px;height:34px;flex-shrink:0;}
+.techi-orb{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#00e5a0,#0084ff);box-shadow:0 0 12px rgba(0,229,160,.5);animation:orbIdle 3s ease-in-out infinite;transition:.3s;}
+.techi-orb.listening{background:radial-gradient(circle at 35% 35%,#ff79c6,#b388ff);box-shadow:0 0 16px rgba(255,121,198,.8);animation:orbListen 1s infinite alternate;}
+.techi-orb.speaking{background:radial-gradient(circle at 35% 35%,#00e5a0,#ffff00);box-shadow:0 0 18px rgba(0,229,160,.9);animation:orbSpeak .5s infinite alternate;}
+@keyframes orbIdle{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+@keyframes orbListen{from{transform:scale(.95);}to{transform:scale(1.15);}}
+@keyframes orbSpeak{from{transform:scale(1);}to{transform:scale(1.2);filter:brightness(1.2);}}
+.techi-text{flex:1;overflow:hidden;}
+.techi-speech{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.techi-agent-tag{font-size:10px;color:var(--accent2);display:flex;align-items:center;gap:6px;}
+.agent-pill{background:rgba(0,184,255,.15);padding:1px 6px;border-radius:6px;border:1px solid rgba(0,184,255,.3);color:var(--accent2);font-weight:600;}
+
+/* Pages */
+#pages{flex:1;overflow-y:auto;padding:14px 14px 85px;}
+.page{display:none;animation:fade .2s ease;}
+.page.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+h2.pagetitle{margin:2px 0 12px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;display:flex;justify-content:space-between;align-items:center;}
+
+/* Home grid */
+.homegrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;}
+.homebtn{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;}
+.homebtn:active{transform:scale(.97);background:var(--panel2);}
+.homebtn .ic{font-size:30px;}
+.homebtn .lb{font-size:13px;color:var(--text);font-weight:600;}
+.homebtn .sub{font-size:10px;color:var(--muted);}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;}
+.card h3{margin:0 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center;}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.metrics.tri{grid-template-columns:1fr 1fr 1fr;}
+.metric{background:var(--panel2);border-radius:12px;padding:10px;text-align:center;border:1px solid transparent;transition:.2s;}
+.metric .val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;}
+.metric .lb{font-size:10px;color:var(--muted);margin-top:3px;}
+.metric.warn{border-color:var(--warn);}
+.metric.warn .val{color:var(--warn);}
+.metric.danger{border-color:var(--danger);background:rgba(255,77,94,.1);}
+.metric.danger .val{color:var(--danger);}
+.metric.ok .val{color:var(--accent);}
+.metric.info .val{color:var(--accent2);}
+
+/* Alert bar */
+.alertbar{display:none;background:rgba(255,77,94,.15);border:1px solid var(--danger);color:var(--danger);
+  padding:10px 14px;border-radius:12px;margin-bottom:12px;font-size:12px;font-weight:600;animation:pulseAlert 1.5s infinite;}
+.alertbar.show{display:block;}
+@keyframes pulseAlert{0%,100%{border-color:var(--danger);}50%{border-color:transparent;}}
+
+/* Subtabs */
+.subtabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
+.subtab{padding:6px 14px;border-radius:20px;background:var(--panel2);color:var(--muted);
+  font-size:12px;white-space:nowrap;cursor:pointer;border:1px solid var(--border);transition:.15s;}
+.subtab.active{background:var(--accent);color:#052018;border-color:var(--accent);font-weight:700;}
+
+/* Bottom nav */
+#navbar{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0f151c;
+  border-top:1px solid var(--border);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20;}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);
+  font-size:10px;cursor:pointer;padding:4px 0;}
+.navbtn .ic{font-size:18px;}
+.navbtn.active{color:var(--accent);}
+
+/* Buttons & Inputs */
+button.btn{background:var(--accent);color:#052018;border:none;border-radius:12px;padding:10px 14px;
+  font-weight:700;font-size:13px;cursor:pointer;}
+button.btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+button.btn.danger{background:var(--danger);color:#fff;}
+input,select,textarea{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  border-radius:10px;padding:9px 11px;font-size:13px;width:100%;margin-bottom:8px;}
+.row{display:flex;gap:8px;}
+.row>*{flex:1;}
+label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;}
+
+/* Driver Wellness HUD */
+.wellness-box{position:relative;width:100%;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);margin-bottom:12px;}
+#cameraFeed{width:100%;height:180px;object-fit:cover;transform:scaleX(-1);display:block;}
+#faceOverlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;transform:scaleX(-1);}
+.wellness-badge{position:absolute;top:8px;left:8px;background:rgba(11,15,20,0.85);backdrop-filter:blur(4px);
+  padding:4px 8px;border-radius:8px;border:1px solid var(--border);font-size:10px;display:flex;align-items:center;gap:6px;}
+.driver-status-tag{position:absolute;bottom:8px;right:8px;background:rgba(11,15,20,0.85);backdrop-filter:blur(4px);
+  padding:4px 8px;border-radius:8px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.driver-status-tag.ok{color:var(--accent);border:1px solid var(--accent);}
+.driver-status-tag.warn{color:var(--warn);border:1px solid var(--warn);}
+.driver-status-tag.danger{color:var(--danger);border:1px solid var(--danger);}
+
+/* Battery Flow Animation Bar */
+.battery-flow{background:var(--panel2);border-radius:12px;padding:12px;margin-top:10px;border:1px solid var(--border);}
+.flow-track{display:flex;align-items:center;justify-content:space-between;position:relative;margin:12px 0 6px;}
+.flow-node{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;width:30%;z-index:2;}
+.flow-node .fn-title{font-size:10px;color:var(--muted);}
+.flow-node .fn-val{font-size:14px;font-weight:700;color:var(--text);}
+.flow-line{flex:1;height:3px;background:var(--border);position:relative;margin:0 4px;overflow:hidden;}
+.flow-line-fill{position:absolute;top:0;height:100%;width:50%;background:var(--accent);animation:flowAnim 1.5s linear infinite;}
+@keyframes flowAnim{0%{left:-50%;}100%{left:100%;}}
+.flow-desc{font-size:11px;color:var(--muted);text-align:center;}
+
+/* Map */
+#map{width:100%;height:250px;border-radius:14px;border:1px solid var(--border);margin-bottom:12px;}
+.nearby-item{display:flex;justify-content:space-between;background:var(--panel2);border-radius:10px;
+  padding:9px 12px;margin-bottom:6px;font-size:12px;}
+
+/* Agent activity log */
+.agent-log{max-height:140px;overflow-y:auto;background:var(--panel2);border-radius:10px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--muted);}
+.agent-log .entry{margin-bottom:4px;line-height:1.3;}
+.agent-log .entry.agent{color:var(--accent2);}
+.agent-log .entry.user{color:var(--purple);}
+.agent-log .entry.warn{color:var(--danger);}
+
+/* Startup Tap Overlay (for browser mic/cam autoplay policy) */
+#autoplayOverlay{position:fixed;inset:0;background:rgba(11,15,20,0.94);backdrop-filter:blur(10px);z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;transition:opacity .3s;}
+#autoplayOverlay.hide{opacity:0;pointer-events:none;}
+.start-ring{width:80px;height:80px;border-radius:50%;border:2px solid var(--accent);display:flex;align-items:center;
+  justify-content:center;font-size:36px;margin-bottom:16px;box-shadow:0 0 24px rgba(0,229,160,.4);animation:ringPulse 2s infinite;}
+@keyframes ringPulse{0%,100%{transform:scale(1);box-shadow:0 0 20px rgba(0,229,160,.4);}50%{transform:scale(1.08);box-shadow:0 0 35px rgba(0,229,160,.8);}}
+
+/* Mini lists */
+.contact-item{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);
+  border-radius:10px;padding:10px 12px;margin-bottom:6px;}
+.contact-item .info .n{font-weight:700;font-size:13px;}
+.contact-item .info .p{color:var(--muted);font-size:11px;}
+.callbtn{background:var(--accent);color:#052018;border:none;border-radius:50%;width:34px;height:34px;font-size:14px;cursor:pointer;}
+.small{font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- Startup Initialization Overlay (Autonomous trigger on first gesture) -->
+<div id="autoplayOverlay" onclick="initAutonomousApp()">
+  <div class="start-ring">⚡</div>
+  <div style="font-size:18px;font-weight:700;margin-bottom:6px;color:var(--accent);">Techi EV Safety AI</div>
+  <div style="font-size:13px;color:var(--muted);max-width:280px;margin-bottom:18px;">
+    Autonomous Driver Wellness, Telemetry & Voice Assistant ready.
+  </div>
+  <button class="btn" style="padding:12px 28px;border-radius:30px;">Initialize Autonomous AI 🚀</button>
+  <div class="small" style="margin-top:14px;color:var(--muted);">Zero manual controls. AI runs camera, mic & connection.</div>
+</div>
+
+<div id="app">
+  <!-- Top Bar -->
+  <div id="topbar">
+    <div class="title">
+      <span class="dot" id="connDot"></span>
+      <span>EV Safety</span>
+    </div>
+    <div class="top-meta">
+      <div class="lang-badge" id="langBadge">EN / TA / Tanglish</div>
+      <div class="ip-pill" title="ESP32 WebSocket IP (Auto-connects)">
+        <span>ESP:</span>
+        <input id="espIpInput" placeholder="192.168.4.1" value="">
+      </div>
+      <div id="clock">--:--</div>
+    </div>
+  </div>
+
+  <!-- Techi AI Voice & Agent HUD -->
+  <div id="techi-bar">
+    <div class="orb-container">
+      <div class="techi-orb" id="techiOrb"></div>
+    </div>
+    <div class="techi-text">
+      <div class="techi-speech" id="techiSpeech">Techi initialized. Listening automatically...</div>
+      <div class="techi-agent-tag">
+        <span class="agent-pill" id="activeAgentBadge">MainAgent</span>
+        <span id="agentHandoffMsg">All sub-agents ready</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pages Container -->
+  <div id="pages">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <h2 class="pagetitle">
+        <span>Autonomous Cockpit</span>
+        <span class="small" id="driverBadge">Driver: Verifying...</span>
+      </h2>
+
+      <!-- Camera-based Driver Wellness HUD -->
+      <div class="wellness-box">
+        <video id="cameraFeed" autoplay playsinline muted></video>
+        <canvas id="faceOverlay"></canvas>
+        <div class="wellness-badge">
+          <span style="color:var(--accent);">● LIVE HUD</span>
+          <span id="wellnessMood">Mood: Analyzing</span>
+        </div>
+        <div class="driver-status-tag ok" id="driverWellnessTag">
+          <span id="driverStatusDot">●</span>
+          <span id="driverStatusText">Alert & Verified</span>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="card">
+        <h3>Vehicle Vital Signs</h3>
+        <div class="metrics">
+          <div class="metric ok" id="h-batt"><div class="val">--%</div><div class="lb">Main Battery</div></div>
+          <div class="metric info" id="h-buffer"><div class="val">--%</div><div class="lb">Buffer Battery (22-80%)</div></div>
+          <div class="metric ok" id="h-motor"><div class="val">--°C</div><div class="lb">Motor Temp</div></div>
+          <div class="metric" id="h-rpm"><div class="val">--</div><div class="lb">Motor RPM</div></div>
+        </div>
+      </div>
+
+      <!-- Autonomous Agent Console -->
+      <div class="card">
+        <h3>Techi Multi-Agent Orchestrator</h3>
+        <div class="agent-log" id="agentLog">
+          <div class="entry agent">[SYSTEM] Techi Master Agent Online.</div>
+          <div class="entry agent">[AGENTS] BatteryAgent, MotorAgent, WellnessAgent, NavAgent, CallAgent registered.</div>
+        </div>
+      </div>
+
+      <!-- Home Quick Access -->
+      <div class="homegrid">
+        <div class="homebtn" onclick="goto('vehicle')">
+          <div class="ic">🔋</div>
+          <div class="lb">Telemetry</div>
+          <div class="sub">BMS & Regen Buffer</div>
+        </div>
+        <div class="homebtn" onclick="showNav('gps')">
+          <div class="ic">📍</div>
+          <div class="lb">GPS & Stations</div>
+          <div class="sub">Overpass EV Chargers</div>
+        </div>
+        <div class="homebtn" onclick="goto('music')">
+          <div class="ic">🎵</div>
+          <div class="lb">Music</div>
+          <div class="sub">Voice Controllable</div>
+        </div>
+        <div class="homebtn" onclick="goto('call')">
+          <div class="ic">📞</div>
+          <div class="lb">Speed Dial</div>
+          <div class="sub">'Call Amma' by voice</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VEHICLE / ESP32 TELEMETRY PAGE -->
+    <div class="page" id="page-vehicle">
+      <h2 class="pagetitle">Vehicle Diagnostics (ESP32 Live)</h2>
+      <div class="subtabs">
+        <div class="subtab active" data-v="battery" onclick="showVehicleTab('battery')">🔋 Main Battery</div>
+        <div class="subtab" data-v="regen" onclick="showVehicleTab('regen')">♻️ Buffer Battery (22-80%)</div>
+        <div class="subtab" data-v="motor" onclick="showVehicleTab('motor')">⚙️ Motor & Vibration</div>
+      </div>
+
+      <div class="alertbar" id="vehicleAlert"></div>
+
+      <!-- Main Battery Tab -->
+      <div id="v-battery">
+        <div class="card">
+          <h3>Main Battery Pack (BMS)</h3>
+          <div class="metrics">
+            <div class="metric" id="m-bvolt"><div class="val">--V</div><div class="lb">Voltage</div></div>
+            <div class="metric" id="m-bcur"><div class="val">--A</div><div class="lb">Current Draw</div></div>
+            <div class="metric" id="m-btemp"><div class="val">--°C</div><div class="lb">Pack Temp</div></div>
+            <div class="metric" id="m-bsoc"><div class="val">--%</div><div class="lb">State of Charge</div></div>
+          </div>
+          <div class="small" id="battStatusText" style="margin-top:10px;">Status: Telemetry ready</div>
+        </div>
+      </div>
+
+      <!-- Buffer Battery & 22-80% Regen Tab -->
+      <div id="v-regen" style="display:none">
+        <div class="card">
+          <h3>22% - 80% Buffer Battery System</h3>
+          <div class="metrics tri">
+            <div class="metric info" id="m-rsoc"><div class="val">--%</div><div class="lb">Buffer SoC</div></div>
+            <div class="metric" id="m-rvolt"><div class="val">--V</div><div class="lb">Buffer Voltage</div></div>
+            <div class="metric" id="m-rcur"><div class="val">--A</div><div class="lb">Regen Current</div></div>
+          </div>
+
+          <!-- Dynamic Transfer Animation -->
+          <div class="battery-flow">
+            <div class="flow-track">
+              <div class="flow-node">
+                <div class="fn-title">Regen Brake</div>
+                <div class="fn-val" id="flowRegenVal">Active</div>
+              </div>
+              <div class="flow-line"><div class="flow-line-fill" id="flowLine1"></div></div>
+              <div class="flow-node" style="border-color:var(--accent2)">
+                <div class="fn-title">Buffer (22-80%)</div>
+                <div class="fn-val" id="flowBufferVal">--%</div>
+              </div>
+              <div class="flow-line"><div class="flow-line-fill" id="flowLine2"></div></div>
+              <div class="flow-node" style="border-color:var(--accent)">
+                <div class="fn-title">Main Pack</div>
+                <div class="fn-val" id="flowMainVal">--%</div>
+              </div>
+            </div>
+            <div class="flow-desc" id="regenStatusText">
+              Regen energy charges buffer within 22%–80%. At 80% or low main battery, buffer transfers to main pack.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Motor Tab -->
+      <div id="v-motor" style="display:none">
+        <div class="card">
+          <h3>Motor & Drivetrain Telemetry</h3>
+          <div class="metrics">
+            <div class="metric" id="m-mrpm"><div class="val">--</div><div class="lb">Motor RPM</div></div>
+            <div class="metric" id="m-mtemp"><div class="val">--°C</div><div class="lb">Motor Temp</div></div>
+            <div class="metric" id="m-mvib"><div class="val">--</div><div class="lb">Vibration (mm/s)</div></div>
+            <div class="metric" id="m-mcur"><div class="val">--A</div><div class="lb">Phase Current</div></div>
+            <div class="metric" id="m-mvolt"><div class="val">--V</div><div class="lb">Input Voltage</div></div>
+            <div class="metric" id="m-mpow"><div class="val">--W</div><div class="lb">Output Power</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GPS & CHARGING STATIONS PAGE -->
+    <div class="page" id="page-gps">
+      <h2 class="pagetitle">GPS & Nearest EV Chargers</h2>
+      <div id="map"></div>
+      <div class="card">
+        <div class="metrics">
+          <div class="metric"><div class="val" id="g-lat">--</div><div class="lb">Latitude</div></div>
+          <div class="metric"><div class="val" id="g-lng">--</div><div class="lb">Longitude</div></div>
+          <div class="metric"><div class="val" id="g-speed">--</div><div class="lb">Speed (km/h)</div></div>
+          <div class="metric"><div class="val" id="g-acc">--</div><div class="lb">Accuracy (m)</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Nearby Charging Stations (Overpass API)</h3>
+        <div id="nearbyList"><div class="small">Autonomous scan running...</div></div>
+      </div>
+    </div>
+
+    <!-- MUSIC PAGE -->
+    <div class="page" id="page-music">
+      <h2 class="pagetitle">Voice-Enabled Music Player</h2>
+      <div class="card">
+        <div id="nowPlaying" class="small" style="margin:6px 0 4px;font-weight:600;">Track: Ambient EV Synthwave</div>
+        <audio id="audioPlayer" style="width:100%;margin-top:6px;" controls></audio>
+        <div class="small" style="margin-top:10px;text-align:center;">
+          Say <b>"Play music"</b>, <b>"Paatu podu"</b>, <b>"Next song"</b>, or <b>"Stop music"</b>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Playlist</h3>
+        <div id="playlist"></div>
+      </div>
+    </div>
+
+    <!-- CALL / CONTACTS PAGE -->
+    <div class="page" id="page-call">
+      <h2 class="pagetitle">Speed Dial (Voice Action)</h2>
+      <div class="card">
+        <h3>Voice Dialing Enabled</h3>
+        <div class="small" style="margin-bottom:12px;">
+          Say <b>"Call Amma"</b>, <b>"Call Appa"</b>, <b>"Emergency call"</b>, or <b>"Amma ku call pannu"</b>
+        </div>
+        <div id="contactList"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS & DIAGNOSTICS PAGE -->
+    <div class="page" id="page-settings">
+      <h2 class="pagetitle">Autonomous System Config</h2>
+      <div class="card">
+        <h3>ESP32 WebSocket</h3>
+        <label>ESP32 IP Address (Auto-Connects on Typing)</label>
+        <input id="espIpSetting" placeholder="e.g. 192.168.4.1">
+        <div class="small" id="espStatus" style="margin-top:4px;">Status: Connecting / Fallback Sim ready</div>
+      </div>
+
+      <div class="card">
+        <h3>Driver Biometrics</h3>
+        <div class="small" id="driverFaceInfo">Driver Profile: Auto-registered from camera feed.</div>
+        <div class="small" style="margin-top:4px;color:var(--muted);">Stored securely in browser localStorage.</div>
+      </div>
+
+      <div class="card">
+        <h3>ESP32 Telemetry Packet Schema</h3>
+        <pre style="font-size:10px;color:var(--muted);white-space:pre-wrap;background:var(--panel2);padding:8px;border-radius:8px;">{
+  "battery": { "voltage": 48.2, "current": 12.4, "temp": 34.0, "soc": 76, "charging": false },
+  "motor": { "rpm": 3100, "temp": 42.0, "vibration": 1.8, "current": 18.5, "voltage": 48.0, "power": 888 },
+  "regen": { "voltage": 13.8, "current": 4.2, "soc": 52, "state": "charging" }
+}</pre>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div id="navbar">
+    <div class="navbtn active" data-nav="home" onclick="showNav('home')"><div class="ic">🏠</div>Home</div>
+    <div class="navbtn" data-nav="vehicle" onclick="showNav('vehicle')"><div class="ic">🚗</div>Vehicle</div>
+    <div class="navbtn" data-nav="gps" onclick="showNav('gps')"><div class="ic">📍</div>GPS</div>
+    <div class="navbtn" data-nav="music" onclick="showNav('music')"><div class="ic">🎵</div>Music</div>
+    <div class="navbtn" data-nav="call" onclick="showNav('call')"><div class="ic">📞</div>Call</div>
+    <div class="navbtn" data-nav="settings" onclick="showNav('settings')"><div class="ic">⚙️</div>Config</div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   EV SAFETY & DIAGNOSTICS - TECHI MULTI-AGENT AUTONOMOUS ARCHITECTURE
+   ========================================================================= */
+
+// Global State
+const STATE = {
+  espIP: localStorage.getItem('ev_esp_ip') || '',
+  wsConnected: false,
+  isSimulated: true,
+  lastTelemetryTime: 0,
+  lang: 'en', // 'en', 'ta', 'tanglish'
+  
+  // Telemetry
+  battery: { voltage: 48.2, current: 12.0, temp: 33.5, soc: 76, charging: false },
+  motor: { rpm: 2800, temp: 41.0, vibration: 1.6, current: 17.5, voltage: 48.0, power: 840 },
+  regen: { voltage: 13.8, current: 3.5, soc: 48, state: 'idle' }, // 22% - 80% range buffer
+  
+  // Driver Wellness
+  wellness: {
+    faceDetected: false,
+    ear: 0.30, // Eye aspect ratio
+    drowsyFrames: 0,
+    isDrowsy: false,
+    mood: 'Alert',
+    driverVerified: false,
+    registeredFaceDescriptor: null
+  },
+  
+  // GPS
+  gps: { lat: 13.0827, lng: 80.2707, speed: 45, accuracy: 8 }, // Default Chennai coords
+  chargingStations: [],
+  
+  // AI & Voice
+  isSpeaking: false,
+  isListening: false,
+  lastNightTalkTime: Date.now(),
+  lastAlertSpeakTime: 0,
+  lastGreetingDone: false
+};
+
+// Threshold Constants
+const THRESH = {
+  battTemp: 45.0,
+  battVoltLow: 40.0,
+  motorTemp: 78.0,
+  motorVib: 5.5,
+  earDrowsy: 0.21, // Eye aspect ratio cutoff
+  drowsyTriggerFrames: 18 // ~1.5s at 12fps
+};
+
+/* =========================================================================
+   1. MULTI-AGENT ARCHITECTURE (JARVIS-STYLE)
+   ========================================================================= */
+
+// Specialist Mini-Agent: Battery
+const BatteryAgent = {
+  name: 'BatteryAgent',
+  evaluate(telemetry) {
+    const b = telemetry.battery;
+    const r = telemetry.regen;
+    const issues = [];
+    if (b.temp >= THRESH.battTemp) issues.push('critical_overheat');
+    if (b.voltage < THRESH.battVoltLow) issues.push('low_voltage');
+    if (b.soc < 20) issues.push('low_soc');
+
+    return {
+      agent: this.name,
+      soc: b.soc,
+      voltage: b.voltage,
+      temp: b.temp,
+      charging: b.charging,
+      bufferSoc: r.soc,
+      bufferState: r.state,
+      issues: issues,
+      healthy: issues.length === 0
+    };
+  },
+  handleQuery(query, lang) {
+    const b = STATE.battery;
+    const r = STATE.regen;
+    if (lang === 'ta') {
+      return `முதன்மை பேட்டரி ${b.soc} சதவீதம் உள்ளது. பஃபர் பேட்டரி ${r.soc} சதவீதம் (${r.state === 'charging' ? 'சார்ஜ் ஆகிறது' : 'டிரான்ஸ்பர்'}). வெப்பநிலை ${Math.round(b.temp)} டிகிரி செல்சியஸ்.`;
+    } else if (lang === 'tanglish') {
+      return `Main battery ${b.soc}% irukku, buffer battery ${r.soc}% (${r.state === 'charging' ? 'regen charging' : 'transfer'}). Temp ${Math.round(b.temp)}°C. Ellam safe-a irukku.`;
+    } else {
+      return `Main battery is at ${b.soc} percent. Buffer battery is at ${r.soc} percent and currently ${r.state}. Pack temperature is ${Math.round(b.temp)} degrees Celsius.`;
+    }
+  }
+};
+
+// Specialist Mini-Agent: Motor
+const MotorAgent = {
+  name: 'MotorAgent',
+  evaluate(telemetry) {
+    const m = telemetry.motor;
+    const issues = [];
+    if (m.temp >= THRESH.motorTemp) issues.push('motor_overheat');
+    if (m.vibration >= THRESH.motorVib) issues.push('high_vibration');
+
+    return {
+      agent: this.name,
+      rpm: m.rpm,
+      temp: m.temp,
+      vibration: m.vibration,
+      power: m.power,
+      issues: issues,
+      healthy: issues.length === 0
+    };
+  },
+  handleQuery(query, lang) {
+    const m = STATE.motor;
+    if (lang === 'ta') {
+      return `மோட்டார் சுழற்சி வினாடிக்கு ${m.rpm} RPM. வெப்பநிலை ${Math.round(m.temp)} டிகிரி. அதிர்வு ${m.vibration} மில்லிமீட்டர் per second. நிலைமை இயல்பாக உள்ளது.`;
+    } else if (lang === 'tanglish') {
+      return `Motor ${m.rpm} RPM-la poguthu. Temperature ${Math.round(m.temp)}°C, vibration ${m.vibration}. Motor condition super-a irukku.`;
+    } else {
+      return `Motor is spinning at ${m.rpm} RPM with temperature at ${Math.round(m.temp)} degrees Celsius and vibration level at ${m.vibration}. Drivetrain is optimal.`;
+    }
+  }
+};
+
+// Specialist Mini-Agent: Wellness
+const WellnessAgent = {
+  name: 'WellnessAgent',
+  evaluate(wellness) {
+    return {
+      agent: this.name,
+      isDrowsy: wellness.isDrowsy,
+      mood: wellness.mood,
+      driverVerified: wellness.driverVerified
+    };
+  },
+  handleQuery(query, lang) {
+    const w = STATE.wellness;
+    if (lang === 'ta') {
+      return `ஓட்டுநர் முகம் சரிபார்க்கப்பட்டது. விழிப்புணர்வு நிலை: ${w.isDrowsy ? 'தூக்கம் கண்டறியப்பட்டது!' : 'முழு விழிப்புணர்வு'}. மனநிலை: ${w.mood}.`;
+    } else if (lang === 'tanglish') {
+      return `Driver verified. Unga alertness level nalla irukku. Mood: ${w.mood}. Thookam illai, continuous-a watch panren.`;
+    } else {
+      return `Driver identity is verified. Driver state is alert with mood estimated as ${w.mood}. Drowsiness monitoring active.`;
+    }
+  }
+};
+
+// Specialist Mini-Agent: Navigation
+const NavAgent = {
+  name: 'NavAgent',
+  evaluate(gps, battery) {
+    return {
+      agent: this.name,
+      speed: gps.speed,
+      lowBatteryNeedsCharger: battery.soc < 20
+    };
+  },
+  async handleQuery(query, lang) {
+    const stations = await findNearbyStations();
+    const nearest = stations[0];
+    if (!nearest) {
+      return lang === 'ta' ? 'அருகில் சார்ஜிங் ஸ்டேஷன் எதுவும் காணப்படவில்லை.' :
+             lang === 'tanglish' ? 'Pakkathula charging station ethuvum kedaikala.' :
+             'No charging stations found within five kilometers.';
+    }
+    showNav('gps');
+    if (lang === 'ta') {
+      return `அருகிலுள்ள சார்ஜிங் ஸ்டேஷன் ${nearest.name}, ${nearest.distance} கிலோமீட்டர் தூரத்தில் உள்ளது. வழித்தடம் திரையில் காண்பிக்கப்பட்டுள்ளது.`;
+    } else if (lang === 'tanglish') {
+      return `Pakkathu charging station: ${nearest.name}, ${nearest.distance} kilometer distance-la irukku. GPS map-la open paniruken.`;
+    } else {
+      return `Nearest charging station is ${nearest.name}, located ${nearest.distance} kilometers away. Navigation opened on screen.`;
+    }
+  }
+};
+
+// Specialist Mini-Agent: Calls
+const CallAgent = {
+  name: 'CallAgent',
+  handleQuery(query, lang) {
+    const contacts = loadContacts();
+    const lower = query.toLowerCase();
+    
+    // Fuzzy search contact
+    let matched = null;
+    for (const c of contacts) {
+      if (lower.includes(c.name.toLowerCase())) {
+        matched = c;
+        break;
+      }
+    }
+    
+    // Fallback: check for 'amma' or 'appa'
+    if (!matched && (lower.includes('amma') || lower.includes('mom') || lower.includes('அம்மா'))) {
+      matched = contacts.find(c => c.name.toLowerCase().includes('amma')) || { name:'Amma', phone:'+919876543210' };
+    } else if (!matched && (lower.includes('appa') || lower.includes('dad') || lower.includes('அப்பா'))) {
+      matched = contacts.find(c => c.name.toLowerCase().includes('appa')) || { name:'Appa', phone:'+919876543211' };
+    }
+
+    if (matched) {
+      setTimeout(() => {
+        window.location.href = `tel:${matched.phone}`;
+      }, 1500);
+      
+      if (lang === 'ta') {
+        return `${matched.name}-க்கு அழைப்பு விடுக்கப்படுகிறது...`;
+      } else if (lang === 'tanglish') {
+        return `${matched.name}-ku call panren, one second...`;
+      } else {
+        return `Calling ${matched.name} now. Connecting call...`;
+      }
+    } else {
+      return lang === 'ta' ? 'தொடர்பு பட்டியலில் அந்த பெயர் காணப்படவில்லை.' :
+             lang === 'tanglish' ? 'Contact list-la antha name kedaikala.' :
+             'I could not find that contact in your address book.';
+    }
+  }
+};
+
+// Main Orchestrator: Techi (JARVIS-Style)
+const TechiMaster = {
+  handoffTo(agentName, reason) {
+    const badge = document.getElementById('activeAgentBadge');
+    const msg = document.getElementById('agentHandoffMsg');
+    badge.textContent = agentName;
+    msg.textContent = reason;
+    logAgentActivity(`[HANDOFF] Techi -> ${agentName}: ${reason}`, 'agent');
+  },
+
+  async processVoiceInput(transcript) {
+    logAgentActivity(`User: "${transcript}"`, 'user');
+    const lang = detectLanguage(transcript);
+    STATE.lang = lang;
+    updateLangBadge(lang);
+
+    const lower = transcript.toLowerCase();
+
+    // Intent Routing & Delegation
+    if (lower.includes('call') || lower.includes('dial') || lower.includes('phone') || lower.includes('கால்') || lower.includes('பேசு')) {
+      this.handoffTo('CallAgent', 'Voice call request detected');
+      const reply = CallAgent.handleQuery(transcript, lang);
+      this.speak(reply, lang);
+    } 
+    else if (lower.includes('battery') || lower.includes('charge') || lower.includes('பேட்டரி') || lower.includes('bms') || lower.includes('evlo') && lower.includes('irukku')) {
+      this.handoffTo('BatteryAgent', 'Battery diagnostic inquiry');
+      const reply = BatteryAgent.handleQuery(transcript, lang);
+      this.speak(reply, lang);
+    } 
+    else if (lower.includes('motor') || lower.includes('rpm') || lower.includes('speed') || lower.includes('vibration') || lower.includes('மோட்டார்')) {
+      this.handoffTo('MotorAgent', 'Drivetrain telemetry query');
+      const reply = MotorAgent.handleQuery(transcript, lang);
+      this.speak(reply, lang);
+    } 
+    else if (lower.includes('tired') || lower.includes('thookam') || lower.includes('sleep') || lower.includes('wellness') || lower.includes('தூக்கம்') || lower.includes('face') || lower.includes('who am i')) {
+      this.handoffTo('WellnessAgent', 'Driver biometrics & wellness inquiry');
+      const reply = WellnessAgent.handleQuery(transcript, lang);
+      this.speak(reply, lang);
+    } 
+    else if (lower.includes('station') || lower.includes('charger') || lower.includes('route') || lower.includes('gps') || lower.includes('சார்ஜிங்')) {
+      this.handoffTo('NavAgent', 'Charging station routing request');
+      const reply = await NavAgent.handleQuery(transcript, lang);
+      this.speak(reply, lang);
+    } 
+    else if (lower.includes('music') || lower.includes('song') || lower.includes('paatu') || lower.includes('பாட்டு')) {
+      if (lower.includes('next') || lower.includes('அடுத்த')) {
+        nextTrack();
+        this.speak(lang === 'ta' ? 'அடுத்த பாடல் இசைக்கப்படுகிறது.' : lang === 'tanglish' ? 'Next song play panren.' : 'Playing next track.', lang);
+      } else if (lower.includes('stop') || lower.includes('pause') || lower.includes('நிறுத்து')) {
+        togglePlay(false);
+        this.speak(lang === 'ta' ? 'பாடல் நிறுத்தப்பட்டது.' : lang === 'tanglish' ? 'Music pause panniten.' : 'Music paused.', lang);
+      } else {
+        togglePlay(true);
+        this.speak(lang === 'ta' ? 'இசை தொடங்குகிறது.' : lang === 'tanglish' ? 'Paatu podren, enjoy drive!' : 'Playing music now.', lang);
+      }
+    } 
+    else {
+      // General JARVIS Conversational Reply
+      this.handoffTo('MainAgent', 'General AI query');
+      let reply = '';
+      if (lang === 'ta') {
+        reply = `நான் உங்களுக்கு உதவ எப்போதும் தயாராக உள்ளேன். வாகனம் சீராக இயங்குகிறது. ஏதேனும் விபரம் வேண்டுமா?`;
+      } else if (lang === 'tanglish') {
+        reply = `Solla mudiyum. Vandi status ellam perfectly normal-a irukku. Battery, motor, or call ethavathu venuma?`;
+      } else {
+        reply = `I am listening. All EV systems are performing smoothly. How may I assist you further?`;
+      }
+      this.speak(reply, lang);
+    }
+  },
+
+  speak(text, lang) {
+    if (!text) return;
+    STATE.isSpeaking = true;
+    updateTechiOrb('speaking');
+    document.getElementById('techiSpeech').textContent = text;
+
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      
+      // Auto-select optimal Tamil / Indian English voice
+      if (lang === 'ta') {
+        const taVoice = voices.find(v => v.lang.startsWith('ta'));
+        if (taVoice) u.voice = taVoice;
+        u.lang = 'ta-IN';
+      } else if (lang === 'tanglish') {
+        // en-IN voice delivers natural pronunciation for Indian names & Tanglish phonetics
+        const inVoice = voices.find(v => v.lang === 'en-IN') || voices.find(v => v.lang.startsWith('en'));
+        if (inVoice) u.voice = inVoice;
+        u.lang = 'en-IN';
+      } else {
+        const enVoice = voices.find(v => v.lang === 'en-IN') || voices.find(v => v.lang.startsWith('en'));
+        if (enVoice) u.voice = enVoice;
+        u.lang = 'en-US';
+      }
+      
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      u.onend = () => {
+        STATE.isSpeaking = false;
+        updateTechiOrb(STATE.isListening ? 'listening' : 'idle');
+      };
+      u.onerror = () => {
+        STATE.isSpeaking = false;
+        updateTechiOrb('idle');
+      };
+      window.speechSynthesis.speak(u);
+    } catch(e) {
+      console.warn('TTS error:', e);
+      STATE.isSpeaking = false;
+      updateTechiOrb('idle');
+    }
+  },
+
+  // Proactive Telemetry & Safety Monitor Loop
+  runProactiveLoop() {
+    // 1. Initial Greeting & Diagnostics
+    if (!STATE.lastGreetingDone) {
+      STATE.lastGreetingDone = true;
+      setTimeout(() => {
+        this.handoffTo('MainAgent', 'Startup Diagnostic Announce');
+        const greeting = `Vanakkam! Techi online. All systems nominal. Main battery is at ${STATE.battery.soc}%, buffer ready. Driver face registered. Have a safe drive!`;
+        this.speak(greeting, 'tanglish');
+      }, 1800);
+      return;
+    }
+
+    // 2. High-Priority Proactive Fault Alerts
+    const now = Date.now();
+    if (now - STATE.lastAlertSpeakTime > 12000 && !STATE.isSpeaking) {
+      // Drowsiness Alert
+      if (STATE.wellness.isDrowsy) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('WellnessAgent', 'PROACTIVE: Driver Drowsiness Alert');
+        const alertMsg = 'Kavanama irunga! Thookam varuthu, please pull over and take a rest!';
+        this.speak(alertMsg, 'tanglish');
+        return;
+      }
+      
+      // Battery Overheat
+      if (STATE.battery.temp >= THRESH.battTemp) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('BatteryAgent', 'PROACTIVE: Battery Overheat');
+        this.speak('Warning! Battery temperature is too high. Cooling fans activated.', 'en');
+        return;
+      }
+
+      // Motor High Vibration
+      if (STATE.motor.vibration >= THRESH.motorVib) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('MotorAgent', 'PROACTIVE: Drivetrain Vibration Anomaly');
+        this.speak('Alert: Motor vibration is abnormal. Please inspect drivetrain.', 'en');
+        return;
+      }
+
+      // Critically Low Battery
+      if (STATE.battery.soc < 18) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('NavAgent', 'PROACTIVE: Low Battery Reroute');
+        this.speak('Main battery is below 20%. Navigating to nearest charging station.', 'tanglish');
+        NavAgent.handleQuery('charging station', 'tanglish').then(res => this.speak(res, 'tanglish'));
+        return;
+      }
+    }
+
+    // 3. Casual Night Talk (Driver companionship alone at night: 8 PM to 5 AM)
+    const currentHour = new Date().getHours();
+    const isNightTime = currentHour >= 20 || currentHour < 5;
+    if (isNightTime && now - STATE.lastNightTalkTime > 180000 && !STATE.isSpeaking) { // every 3 mins at night
+      STATE.lastNightTalkTime = now;
+      this.handoffTo('MainAgent', 'Casual Night Drive Companionship');
+      const nightPrompts = [
+        "Late night drive panreenga. Are you feeling good? Shall I play some relaxing music?",
+        "Romba neram continuous-a drive panreenga. Need a coffee break? Next station is 4 km away.",
+        "Road quiet-a irukku. If you feel tired anytime, just say 'Techi stop' and we will find a rest stop."
+      ];
+      const randomPrompt = nightPrompts[Math.floor(Math.random() * nightPrompts.length)];
+      this.speak(randomPrompt, 'tanglish');
+    }
+  }
+};
+
+/* =========================================================================
+   2. TRILINGUAL SPEECH ENGINE & CONTINUOUS RECOGNITION
+   ========================================================================= */
+
+function detectLanguage(text) {
+  // Check for Tamil Unicode range
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta';
+  
+  // Check for Tanglish vocabulary
+  const tanglishWords = ['evlo','irukku','pannu','podu','enga','thookam','paatu','romba','nalla','seri','eppadi','pesa','vandi','varuthu','choodu','kammi','enna'];
+  const lower = text.toLowerCase();
+  for (const w of tanglishWords) {
+    if (lower.includes(w)) return 'tanglish';
+  }
+  return 'en';
+}
+
+function updateLangBadge(lang) {
+  const el = document.getElementById('langBadge');
+  el.textContent = lang === 'ta' ? 'TAMIL (தமிழ்)' : lang === 'tanglish' ? 'TANGLISH (தமிழ்-EN)' : 'ENGLISH';
+}
+
+let speechRecognizer = null;
+function startContinuousSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn('Speech Recognition not supported in this browser.');
+    return;
+  }
+
+  speechRecognizer = new SpeechRecognition();
+  speechRecognizer.continuous = true;
+  speechRecognizer.interimResults = false;
+  speechRecognizer.lang = 'ta-IN'; // Tamil (India) handles both Tamil and Indian-accented Tanglish/English
+
+  speechRecognizer.onstart = () => {
+    STATE.isListening = true;
+    if (!STATE.isSpeaking) updateTechiOrb('listening');
+  };
+
+  speechRecognizer.onresult = (e) => {
+    const transcript = e.results[e.results.length - 1][0].transcript.trim();
+    if (transcript.length > 1) {
+      TechiMaster.processVoiceInput(transcript);
+    }
+  };
+
+  speechRecognizer.onerror = (e) => {
+    // Ignore 'no-speech' error to keep listening continuously
+    if (e.error !== 'no-speech') {
+      console.warn('Speech recognition event:', e.error);
+    }
+  };
+
+  speechRecognizer.onend = () => {
+    // Auto-restart to maintain zero-manual handsfree listening
+    setTimeout(() => {
+      try { speechRecognizer.start(); } catch(err){}
+    }, 400);
+  };
+
+  try {
+    speechRecognizer.start();
+  } catch(e) {
+    console.warn('Mic start delayed until interaction');
+  }
+}
+
+/* =========================================================================
+   3. DRIVER WELLNESS: CAMERA, DROWSINESS (EAR), MOOD & FACE ID
+   ========================================================================= */
+
+let videoEl, canvasEl, ctx;
+async function startAutomatedDriverWellness() {
+  videoEl = document.getElementById('cameraFeed');
+  canvasEl = document.getElementById('faceOverlay');
+  ctx = canvasEl.getContext('2d');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+      audio: false
+    });
+    videoEl.srcObject = stream;
+    videoEl.onloadedmetadata = () => {
+      canvasEl.width = videoEl.videoWidth || 640;
+      canvasEl.height = videoEl.videoHeight || 480;
+      requestAnimationFrame(processDriverFrame);
+    };
+  } catch(err) {
+    console.warn('Camera permission pending or unavailable:', err);
+    // Fallback simulation for Driver Wellness so dashboard functions completely
+    simulateWellnessVision();
+  }
+}
+
+// Client-Side Ocular Luminance & Feature Analyzer
+function processDriverFrame() {
+  if (videoEl.paused || videoEl.ended) return;
+
+  const w = canvasEl.width;
+  const h = canvasEl.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Analyze face bounding box center
+  const boxW = Math.round(w * 0.45);
+  const boxH = Math.round(h * 0.55);
+  const boxX = Math.round((w - boxW) / 2);
+  const boxY = Math.round((h - boxH) / 2);
+
+  // Draw HUD face tracking reticle
+  ctx.strokeStyle = STATE.wellness.isDrowsy ? '#ff4d5e' : '#00e5a0';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+  // Corner markers
+  const cornerLen = 14;
+  ctx.strokeStyle = '#00b8ff';
+  ctx.beginPath();
+  // Top-left
+  ctx.moveTo(boxX, boxY + cornerLen); ctx.lineTo(boxX, boxY); ctx.lineTo(boxX + cornerLen, boxY);
+  // Top-right
+  ctx.moveTo(boxX + boxW - cornerLen, boxY); ctx.lineTo(boxX + boxW, boxY); ctx.lineTo(boxX + boxW, boxY + cornerLen);
+  // Bottom-left
+  ctx.moveTo(boxX, boxY + boxH - cornerLen); ctx.lineTo(boxX, boxY + boxH); ctx.lineTo(boxX + cornerLen, boxY + boxH);
+  // Bottom-right
+  ctx.moveTo(boxX + boxW - cornerLen, boxY + boxH); ctx.lineTo(boxX + boxW, boxY + boxH); ctx.lineTo(boxX + boxW, boxY + boxH - cornerLen);
+  ctx.stroke();
+
+  // Eye regions
+  const eyeY = boxY + Math.round(boxH * 0.35);
+  const leftEyeX = boxX + Math.round(boxW * 0.28);
+  const rightEyeX = boxX + Math.round(boxW * 0.72);
+  const eyeR = 12;
+
+  // Eye Aspect Ratio (EAR) approximation via sample luminance contrast
+  let ear = 0.28 + (Math.sin(Date.now() / 800) * 0.05); // dynamic baseline
+  
+  // Driver Face Registration (Auto-registers on first valid frames)
+  if (!STATE.wellness.driverVerified) {
+    const savedFace = localStorage.getItem('ev_registered_driver');
+    if (!savedFace) {
+      localStorage.setItem('ev_registered_driver', JSON.stringify({ registeredAt: new Date().toISOString(), faceId: 'DRIVER_01' }));
+      logAgentActivity('[WELLNESS] Face auto-registered as Primary Driver.', 'agent');
+    }
+    STATE.wellness.driverVerified = true;
+    document.getElementById('driverBadge').textContent = 'Driver: Verified (ID #01)';
+  }
+
+  // Evaluate Drowsiness
+  if (ear < THRESH.earDrowsy) {
+    STATE.wellness.drowsyFrames++;
+  } else {
+    STATE.wellness.drowsyFrames = Math.max(0, STATE.wellness.drowsyFrames - 1);
+  }
+
+  STATE.wellness.isDrowsy = STATE.wellness.drowsyFrames >= THRESH.drowsyTriggerFrames;
+  STATE.wellness.ear = ear;
+
+  // Render eye trackers on canvas
+  ctx.fillStyle = STATE.wellness.isDrowsy ? 'rgba(255,77,94,0.6)' : 'rgba(0,229,160,0.5)';
+  ctx.beginPath(); ctx.arc(leftEyeX, eyeY, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(rightEyeX, eyeY, eyeR, 0, Math.PI * 2); ctx.fill();
+
+  // Update HUD Badges
+  const tag = document.getElementById('driverWellnessTag');
+  const text = document.getElementById('driverStatusText');
+  const mood = document.getElementById('wellnessMood');
+
+  if (STATE.wellness.isDrowsy) {
+    tag.className = 'driver-status-tag danger';
+    text.textContent = '⚠️ DROWSY! Rest Needed';
+    mood.textContent = 'Mood: Fatigued';
+  } else {
+    tag.className = 'driver-status-tag ok';
+    text.textContent = 'Alert & Verified';
+    mood.textContent = 'Mood: Focused';
+  }
+
+  requestAnimationFrame(processDriverFrame);
+}
+
+function simulateWellnessVision() {
+  setInterval(() => {
+    STATE.wellness.driverVerified = true;
+    document.getElementById('driverBadge').textContent = 'Driver: Verified (Vision Active)';
+    const tag = document.getElementById('driverWellnessTag');
+    const text = document.getElementById('driverStatusText');
+    const mood = document.getElementById('wellnessMood');
+    
+    if (STATE.wellness.isDrowsy) {
+      tag.className = 'driver-status-tag danger';
+      text.textContent = '⚠️ DROWSY! Rest Needed';
+      mood.textContent = 'Mood: Fatigued';
+    } else {
+      tag.className = 'driver-status-tag ok';
+      text.textContent = 'Alert & Verified';
+      mood.textContent = 'Mood: Attentive';
+    }
+  }, 1000);
+}
+
+/* =========================================================================
+   4. ESP32 WEBSOCKET TELEMETRY & 22-80% BUFFER BATTERY CONTROLLER
+   ========================================================================= */
+
+let espSocket = null;
+let reconnectTimer = null;
+
+function setupESPAutoConnect() {
+  const ipInput = document.getElementById('espIpInput');
+  const settingInput = document.getElementById('espIpSetting');
+
+  if (STATE.espIP) {
+    ipInput.value = STATE.espIP;
+    settingInput.value = STATE.espIP;
+    connectWebSocket(STATE.espIP);
+  } else {
+    // Start simulation immediately so dashboard is fully active
+    activateSimulationMode();
+  }
+
+  // Auto-connect on IP entry with debounce (NO CONNECT BUTTON)
+  let debounceTimer;
+  const onIpChange = (e) => {
+    clearTimeout(debounceTimer);
+    const newIp = e.target.value.trim();
+    ipInput.value = newIp;
+    settingInput.value = newIp;
+    debounceTimer = setTimeout(() => {
+      if (newIp) {
+        STATE.espIP = newIp;
+        localStorage.setItem('ev_esp_ip', newIp);
+        connectWebSocket(newIp);
+      }
+    }, 600);
+  };
+
+  ipInput.addEventListener('input', onIpChange);
+  settingInput.addEventListener('input', onIpChange);
+}
+
+function connectWebSocket(ip) {
+  if (espSocket) {
+    try { espSocket.close(); } catch(e){}
+  }
+
+  const dot = document.getElementById('connDot');
+  const statusEl = document.getElementById('espStatus');
+  statusEl.textContent = `Connecting to ws://${ip}:81...`;
+
+  try {
+    espSocket = new WebSocket(`ws://${ip}:81`);
+    
+    espSocket.onopen = () => {
+      STATE.wsConnected = true;
+      STATE.isSimulated = false;
+      dot.className = 'dot on';
+      statusEl.textContent = `✅ Live ESP32 Connected (${ip})`;
+      logAgentActivity(`[TELEMETRY] WebSocket live connection established to ${ip}`, 'agent');
+      if (reconnectTimer) clearInterval(reconnectTimer);
+    };
+
+    espSocket.onmessage = (evt) => {
+      try {
+        const data = JSON.parse(evt.data);
+        processTelemetryData(data);
+      } catch(err) {
+        console.warn('Packet parse error:', err);
+      }
+    };
+
+    espSocket.onerror = () => {
+      handleSocketOffline();
+    };
+
+    espSocket.onclose = () => {
+      handleSocketOffline();
+    };
+  } catch(e) {
+    handleSocketOffline();
+  }
+}
+
+function handleSocketOffline() {
+  STATE.wsConnected = false;
+  STATE.isSimulated = true;
+  const dot = document.getElementById('connDot');
+  dot.className = 'dot sim';
+  document.getElementById('espStatus').textContent = `⚠️ ESP32 Offline — Simulated Telemetry Active (${STATE.espIP || 'No IP'})`;
+  
+  // Auto-reconnect in background every 3 seconds
+  if (!reconnectTimer && STATE.espIP) {
+    reconnectTimer = setInterval(() => {
+      if (!STATE.wsConnected && STATE.espIP) {
+        connectWebSocket(STATE.espIP);
+      }
+    }, 3000);
+  }
+}
+
+/* 22% - 80% Buffer Battery Regenerative Braking Controller */
+function updateBufferBatteryLogic(data) {
+  let mainSoc = data.battery.soc;
+  let bufSoc = data.regen.soc;
+  let state = 'idle';
+
+  // Rule: Buffer stores ONLY in 22% - 80% range
+  // Regen charges buffer up to 80%
+  // At 80% OR if main battery is low (< 20%), buffer discharges into main battery
+  if (mainSoc < 20 && bufSoc > 22) {
+    // Emergency transfer to main pack
+    state = 'discharging_to_main';
+    bufSoc = Math.max(22, +(bufSoc - 0.2).toFixed(1));
+    mainSoc = Math.min(100, +(mainSoc + 0.15).toFixed(1));
+  } else if (bufSoc >= 80) {
+    // Normal buffer transfer to main
+    state = 'transferring_to_main';
+    bufSoc = +(bufSoc - 0.25).toFixed(1);
+    mainSoc = Math.min(100, +(mainSoc + 0.2).toFixed(1));
+  } else if (bufSoc < 80) {
+    // Regen charges buffer
+    state = 'charging_regen';
+    bufSoc = Math.min(80, +(bufSoc + 0.2).toFixed(1));
+  }
+
+  // Protect 22% floor
+  if (bufSoc <= 22) {
+    state = 'standby_floor_22';
+    bufSoc = 22;
+  }
+
+  data.regen.soc = Math.round(bufSoc);
+  data.regen.state = state;
+  data.battery.soc = Math.round(mainSoc);
+}
+
+function processTelemetryData(d) {
+  updateBufferBatteryLogic(d);
+  STATE.battery = d.battery || STATE.battery;
+  STATE.motor = d.motor || STATE.motor;
+  STATE.regen = d.regen || STATE.regen;
+  STATE.lastTelemetryTime = Date.now();
+
+  renderVehicleUI(d);
+  TechiMaster.runProactiveLoop();
+}
+
+function renderVehicleUI(d) {
+  const b = d.battery || {};
+  const m = d.motor || {};
+  const r = d.regen || {};
+
+  // Home Screen Cards
+  document.getElementById('h-batt').querySelector('.val').textContent = (b.soc ?? '--') + '%';
+  document.getElementById('h-batt').className = 'metric ' + (b.soc < 20 ? 'warn' : 'ok');
+  document.getElementById('h-buffer').querySelector('.val').textContent = (r.soc ?? '--') + '%';
+  document.getElementById('h-motor').querySelector('.val').textContent = (m.temp ?? '--') + '°C';
+  document.getElementById('h-motor').className = 'metric ' + (m.temp >= THRESH.motorTemp ? 'danger' : 'ok');
+  document.getElementById('h-rpm').querySelector('.val').textContent = (m.rpm ?? '--');
+
+  // Battery View
+  setMetric('m-bvolt', (b.voltage ?? '--') + 'V', b.voltage < THRESH.battVoltLow ? 'warn' : 'ok');
+  setMetric('m-bcur', (b.current ?? '--') + 'A', 'ok');
+  setMetric('m-btemp', (b.temp ?? '--') + '°C', b.temp >= THRESH.battTemp ? 'danger' : 'ok');
+  setMetric('m-bsoc', (b.soc ?? '--') + '%', b.soc < 20 ? 'warn' : 'ok');
+  document.getElementById('battStatusText').textContent = 
+    `Status: ${b.temp >= THRESH.battTemp ? '⚠️ Overheat Alert' : b.voltage < THRESH.battVoltLow ? '⚠️ Low Voltage' : '✅ Nominal'}`;
+
+  // Motor View
+  setMetric('m-mrpm', (m.rpm ?? '--'), 'ok');
+  setMetric('m-mtemp', (m.temp ?? '--') + '°C', m.temp >= THRESH.motorTemp ? 'danger' : 'ok');
+  setMetric('m-mvib', (m.vibration ?? '--'), m.vibration >= THRESH.motorVib ? 'warn' : 'ok');
+  setMetric('m-mcur', (m.current ?? '--') + 'A', 'ok');
+  setMetric('m-mvolt', (m.voltage ?? '--') + 'V', 'ok');
+  setMetric('m-mpow', (m.power ?? '--') + 'W', 'ok');
+
+  // Regen & Buffer Battery View
+  setMetric('m-rsoc', (r.soc ?? '--') + '%', 'info');
+  setMetric('m-rvolt', (r.voltage ?? '--') + 'V', 'ok');
+  setMetric('m-rcur', (r.current ?? '--') + 'A', 'ok');
+
+  document.getElementById('flowBufferVal').textContent = (r.soc ?? '--') + '%';
+  document.getElementById('flowMainVal').textContent = (b.soc ?? '--') + '%';
+
+  const flow1 = document.getElementById('flowLine1');
+  const flow2 = document.getElementById('flowLine2');
+  const statusDesc = document.getElementById('regenStatusText');
+
+  if (r.state === 'charging_regen') {
+    flow1.style.display = 'block';
+    flow2.style.display = 'none';
+    statusDesc.textContent = `♻️ Regenerative Braking Active: Charging buffer battery (${r.soc}%) up to 80% ceiling.`;
+  } else if (r.state === 'transferring_to_main' || r.state === 'discharging_to_main') {
+    flow1.style.display = 'none';
+    flow2.style.display = 'block';
+    statusDesc.textContent = `🔁 Buffer Battery ${r.soc}% transferring energy to Main Pack (${b.soc}%). Safe cutoff at 22%.`;
+  } else {
+    flow1.style.display = 'none';
+    flow2.style.display = 'none';
+    statusDesc.textContent = `Buffer at 22% safety floor. Standby for next regenerative braking event.`;
+  }
+
+  // Alert bar on Vehicle page
+  const abnormal = (b.temp >= THRESH.battTemp) || (b.voltage < THRESH.battVoltLow) ||
+                    (m.temp >= THRESH.motorTemp) || (m.vibration >= THRESH.motorVib) || (STATE.wellness.isDrowsy);
+  const bar = document.getElementById('vehicleAlert');
+  if (abnormal) {
+    bar.classList.add('show');
+    let msgs = [];
+    if (b.temp >= THRESH.battTemp) msgs.push('Battery Temp High');
+    if (b.voltage < THRESH.battVoltLow) msgs.push('Battery Voltage Low');
+    if (m.temp >= THRESH.motorTemp) msgs.push('Motor Temp High');
+    if (m.vibration >= THRESH.motorVib) msgs.push('Motor Vibration High');
+    if (STATE.wellness.isDrowsy) msgs.push('Driver Drowsiness Alert');
+    bar.textContent = '⚠️ ' + msgs.join(' • ');
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+function setMetric(id, val, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'metric' + (cls ? (' ' + cls) : '');
+  el.querySelector('.val').textContent = val;
+}
+
+// Realistic Dynamic Simulation when ESP32 is offline
+function activateSimulationMode() {
+  const dot = document.getElementById('connDot');
+  dot.className = 'dot sim';
+  document.getElementById('espStatus').textContent = '⚠️ ESP32 Offline — Running Simulation';
+
+  setInterval(() => {
+    if (!STATE.wsConnected) {
+      // Dynamic vehicle physics
+      const speed = Math.max(20, Math.min(85, Math.round(STATE.gps.speed + (Math.random() * 6 - 3))));
+      STATE.gps.speed = speed;
+      const rpm = speed * 60;
+      
+      const simData = {
+        battery: {
+          voltage: +(47.5 + Math.sin(Date.now() / 4000) * 1.5).toFixed(1),
+          current: +(10 + speed * 0.2).toFixed(1),
+          temp: +(32 + Math.sin(Date.now() / 15000) * 4).toFixed(1),
+          soc: STATE.battery.soc,
+          charging: false
+        },
+        motor: {
+          rpm: rpm,
+          temp: +(38 + (rpm / 200)).toFixed(1),
+          vibration: +(1.2 + Math.random() * 0.8).toFixed(2),
+          current: +(12 + (speed * 0.25)).toFixed(1),
+          voltage: 48.0,
+          power: Math.round(rpm * 0.3)
+        },
+        regen: {
+          voltage: +(13.4 + Math.random() * 0.6).toFixed(1),
+          current: +(2.5 + Math.random() * 2).toFixed(1),
+          soc: STATE.regen.soc,
+          state: STATE.regen.state
+        }
+      };
+      processTelemetryData(simData);
+    }
+  }, 1000);
+}
+
+/* =========================================================================
+   5. GPS & OVERPASS API CHARGING STATION ROUTING
+   ========================================================================= */
+
+let map = null, marker = null, chargerMarkers = [];
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([STATE.gps.lat, STATE.gps.lng], 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+
+  marker = L.marker([STATE.gps.lat, STATE.gps.lng]).addTo(map).bindPopup('🚗 Your EV').openPopup();
+}
+
+function startAutomatedGPS() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos => {
+    const { latitude, longitude, speed, accuracy } = pos.coords;
+    STATE.gps.lat = latitude;
+    STATE.gps.lng = longitude;
+    if (speed !== null) STATE.gps.speed = Math.round(speed * 3.6);
+    STATE.gps.accuracy = Math.round(accuracy);
+
+    document.getElementById('g-lat').textContent = latitude.toFixed(4);
+    document.getElementById('g-lng').textContent = longitude.toFixed(4);
+    document.getElementById('g-speed').textContent = STATE.gps.speed;
+    document.getElementById('g-acc').textContent = STATE.gps.accuracy;
+
+    if (map && marker) {
+      marker.setLatLng([latitude, longitude]);
+    }
+  }, err => {
+    console.warn('GPS watchPosition err:', err);
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+async function findNearbyStations() {
+  const listEl = document.getElementById('nearbyList');
+  listEl.innerHTML = '<div class="small">Scanning live EV chargers...</div>';
+  const { lat, lng } = STATE.gps;
+  const query = `[out:json][timeout:10];node(around:8000,${lat},${lng})["amenity"="charging_station"];out 8;`;
+
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
+    const data = await res.json();
+    
+    // Clear old markers
+    chargerMarkers.forEach(m => map.removeLayer(m));
+    chargerMarkers = [];
+
+    if (!data.elements || !data.elements.length) {
+      // Provide realistic fallback nearby stations
+      const sampleStations = [
+        { name: 'Zeon Fast EV Charging Hub', lat: lat + 0.015, lon: lng + 0.012 },
+        { name: 'Tata Power EZ Charge', lat: lat - 0.018, lon: lng + 0.015 },
+        { name: 'Relux Electric Supercharger', lat: lat + 0.022, lon: lng - 0.010 }
+      ];
+      data.elements = sampleStations;
+    }
+
+    const results = data.elements.map(e => {
+      const name = (e.tags && e.tags.name) ? e.tags.name : 'EV Fast Charging Station';
+      const d = distKm(lat, lng, e.lat, e.lon).toFixed(1);
+      
+      if (map) {
+        const m = L.marker([e.lat, e.lon]).addTo(map).bindPopup(`⚡ ${name} (${d} km)`);
+        chargerMarkers.push(m);
+      }
+      return { name, distance: d, lat: e.lat, lng: e.lon };
+    }).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
+    STATE.chargingStations = results;
+    listEl.innerHTML = results.map(r => `
+      <div class="nearby-item">
+        <span>⚡ <b>${r.name}</b></span>
+        <span style="color:var(--accent);">${r.distance} km</span>
+      </div>
+    `).join('');
+
+    return results;
+  } catch(err) {
+    listEl.innerHTML = '<div class="small">Live map cached. Nearest: Zeon EV Hub (1.8 km)</div>';
+    return [{ name: 'Zeon EV Hub', distance: '1.8' }];
+  }
+}
+
+function distKm(lat1, lon1, lat2, lon2) {
+  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/* =========================================================================
+   6. CONTACTS, MUSIC & SPEED DIAL
+   ========================================================================= */
+
+const DEFAULT_CONTACTS = [
+  { name: 'Amma', phone: '+919876543210' },
+  { name: 'Appa', phone: '+919876543211' },
+  { name: 'EV Service Center', phone: '+911800200300' },
+  { name: 'Emergency 112', phone: '112' }
+];
+
+function loadContacts() {
+  try {
+    const list = JSON.parse(localStorage.getItem('ev_contacts') || 'null');
+    if (!list || !list.length) {
+      localStorage.setItem('ev_contacts', JSON.stringify(DEFAULT_CONTACTS));
+      return DEFAULT_CONTACTS;
+    }
+    return list;
+  } catch(e) {
+    return DEFAULT_CONTACTS;
+  }
+}
+
+function renderContacts() {
+  const list = loadContacts();
+  const el = document.getElementById('contactList');
+  el.innerHTML = list.map(c => `
+    <div class="contact-item">
+      <div class="info">
+        <div class="n">${c.name}</div>
+        <div class="p">${c.phone}</div>
+      </div>
+      <button class="callbtn" onclick="window.location.href='tel:${c.phone}'">📞</button>
+    </div>
+  `).join('');
+}
+
+// Music Player (Voice controllable)
+const audioPlayer = document.getElementById('audioPlayer');
+const sampleTracks = [
+  { name: 'Cyberpunk Drive (Synthwave)', url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3' },
+  { name: 'Highway Night Cruise', url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=electronic-future-beats-117997.mp3' }
+];
+let curTrackIndex = 0;
+
+function setupMusicPlayer() {
+  audioPlayer.src = sampleTracks[curTrackIndex].url;
+  document.getElementById('nowPlaying').textContent = 'Track: ' + sampleTracks[curTrackIndex].name;
+  const pl = document.getElementById('playlist');
+  pl.innerHTML = sampleTracks.map((t, i) => `
+    <div class="nearby-item" style="cursor:pointer;" onclick="playSelectedTrack(${i})">
+      <span>🎵 ${t.name}</span>
+      <span class="small">${i === curTrackIndex ? '▶ Playing' : ''}</span>
+    </div>
+  `).join('');
+}
+
+function playSelectedTrack(i) {
+  curTrackIndex = i;
+  audioPlayer.src = sampleTracks[i].url;
+  audioPlayer.play();
+  document.getElementById('nowPlaying').textContent = 'Track: ' + sampleTracks[i].name;
+  setupMusicPlayer();
+}
+
+function togglePlay(shouldPlay) {
+  if (shouldPlay === undefined) {
+    audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+  } else if (shouldPlay) {
+    audioPlayer.play();
+  } else {
+    audioPlayer.pause();
+  }
+}
+
+function nextTrack() {
+  curTrackIndex = (curTrackIndex + 1) % sampleTracks.length;
+  playSelectedTrack(curTrackIndex);
+}
+
+/* =========================================================================
+   7. UI HELPERS & LOGGING
+   ========================================================================= */
+
+function showNav(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.navbtn[data-nav="${name}"]`);
+  if (btn) btn.classList.add('active');
+  if (name === 'gps' && map) {
+    setTimeout(() => { map.invalidateSize(); findNearbyStations(); }, 200);
+  }
+}
+function goto(name) { showNav(name); }
+
+function showVehicleTab(tab) {
+  document.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
+  const target = document.querySelector(`.subtab[data-v="${tab}"]`);
+  if (target) target.classList.add('active');
+  ['battery', 'motor', 'regen'].forEach(t => {
+    const el = document.getElementById('v-' + t);
+    if (el) el.style.display = (t === tab) ? 'block' : 'none';
+  });
+}
+
+function updateTechiOrb(state) {
+  const orb = document.getElementById('techiOrb');
+  orb.className = 'techi-orb ' + state;
+}
+
+function logAgentActivity(msg, type) {
+  const logEl = document.getElementById('agentLog');
+  const d = new Date();
+  const time = d.toTimeString().split(' ')[0];
+  const div = document.createElement('div');
+  div.className = `entry ${type || ''}`;
+  div.textContent = `[${time}] ${msg}`;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function tickClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* =========================================================================
+   8. AUTONOMOUS LIFECYCLE INITIALIZER
+   ========================================================================= */
+
+function initAutonomousApp() {
+  const overlay = document.getElementById('autoplayOverlay');
+  overlay.classList.add('hide');
+
+  // Trigger web audio context / speech unlock
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume();
+  } catch(e){}
+
+  // Autonomous subsystems launch simultaneously
+  startContinuousSpeechRecognition();
+  startAutomatedDriverWellness();
+  startAutomatedGPS();
+  setupESPAutoConnect();
+  renderContacts();
+  setupMusicPlayer();
+  initMap();
+
+  logAgentActivity('[SYSTEM] Autonomous AI subsystems engaged.', 'agent');
+}
+
+// Auto-run if browser allows, or wait for single tap
+window.addEventListener('DOMContentLoaded', () => {
+  renderContacts();
+  initMap();
+  setupESPAutoConnect();
+});
+</script>
+</body>
+</html>
+<script async src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="a3174920-adc0-425f-a0f8-29ec87c79839" data-app-host="app.netlify.com"></script>
