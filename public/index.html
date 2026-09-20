@@ -471,6 +471,9 @@ label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;}
   <div id="youtube-player"></div>
 </div>
 
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
 <script>
 /* =========================================================================
    1. GLOBAL STATE & THRESHOLDS
@@ -505,16 +508,119 @@ const STATE = {
 };
 
 const THRESH = {
-  battTemp: 55.0,
+  battTemp: 45.0,     // 45°C Overheat Warning Trigger
   battVoltLow: 42.0,
-  motorTemp: 70.0,
-  motorVib: 4.5,
+  motorTemp: 65.0,    // 65°C Motor Warning Trigger
+  motorVib: 3.5,
   earDrowsy: 0.21,
-  drowsyTriggerFrames: 14
+  drowsyTriggerFrames: 12
 };
 
 /* =========================================================================
-   2. TRILINGUAL SPEECH ENGINE & TECHI BACKEND INTEGRATION
+   2. YOUTUBE PLAYER & AUDIO MUSIC INTEGRATION
+   ========================================================================= */
+
+let ytPlayer = null;
+let youtubeQueue = [];
+let ytCurrentIndex = 0;
+
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('youtube-player', {
+    height: '1',
+    width: '1',
+    playerVars: { autoplay: 1, controls: 0 },
+    events: {
+      onReady: () => console.log("YouTube Audio Engine Ready"),
+      onStateChange: (e) => {
+        if (e.data === 0) { // ENDED
+          playNextYouTubeTrack();
+        }
+      }
+    }
+  });
+};
+
+async function searchAndPlayYouTube(query) {
+  if (!query) query = "Tamil melody hit songs";
+  try {
+    const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (data.items && data.items.length) {
+      youtubeQueue = data.items;
+      ytCurrentIndex = 0;
+      playCurrentYouTubeTrack();
+    }
+  } catch(e) {
+    console.error("YouTube search error:", e);
+  }
+}
+
+function playCurrentYouTubeTrack() {
+  const track = youtubeQueue[ytCurrentIndex];
+  if (!track) return;
+
+  if (ytPlayer && ytPlayer.loadVideoById) {
+    ytPlayer.loadVideoById(track.videoId);
+    document.getElementById('nowPlaying').textContent = `🎵 YouTube: ${track.title} (${track.channel})`;
+    
+    // Render YouTube Queue into Playlist UI
+    const pl = document.getElementById('playlist');
+    pl.innerHTML = youtubeQueue.map((t, i) => `
+      <div class="nearby-item" style="cursor:pointer;" onclick="playSelectedYouTubeIndex(${i})">
+        <span>🎵 <b>${t.title}</b> <span class="small">(${t.channel})</span></span>
+        <span class="small" style="color:var(--accent);">${i === ytCurrentIndex ? '▶ Playing' : ''}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function playSelectedYouTubeIndex(i) {
+  ytCurrentIndex = i;
+  playCurrentYouTubeTrack();
+}
+
+function playNextYouTubeTrack() {
+  if (!youtubeQueue.length) {
+    nextTrack();
+    return;
+  }
+  ytCurrentIndex = (ytCurrentIndex + 1) % youtubeQueue.length;
+  playCurrentYouTubeTrack();
+}
+
+function togglePlay(shouldPlay) {
+  const audio = document.getElementById('audioPlayer');
+  if (ytPlayer && ytPlayer.pauseVideo && youtubeQueue.length) {
+    if (shouldPlay === false) ytPlayer.pauseVideo();
+    else if (shouldPlay === true) ytPlayer.playVideo();
+    else {
+      const state = ytPlayer.getPlayerState();
+      if (state === 1) ytPlayer.pauseVideo();
+      else ytPlayer.playVideo();
+    }
+  } else {
+    if (shouldPlay === undefined) {
+      audio.paused ? audio.play() : audio.pause();
+    } else if (shouldPlay) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  }
+}
+
+function nextTrack() {
+  if (youtubeQueue.length) {
+    playNextYouTubeTrack();
+  } else {
+    curTrackIndex = (curTrackIndex + 1) % sampleTracks.length;
+    setupMusicPlayer();
+    document.getElementById('audioPlayer').play();
+  }
+}
+
+/* =========================================================================
+   3. TRILINGUAL SPEECH ENGINE & CONTINUOUS RECOGNITION
    ========================================================================= */
 
 function detectLanguage(text) {
@@ -568,7 +674,7 @@ function startContinuousSpeechRecognition() {
   try { speechRecognizer.start(); } catch(e){}
 }
 
-/* Techi AI Backend Orchestrator */
+/* Techi AI Backend Orchestrator & Real-Time Safety Monitor */
 const TechiMaster = {
   handoffTo(agentName, reason) {
     const badge = document.getElementById('activeAgentBadge');
@@ -585,6 +691,19 @@ const TechiMaster = {
     updateLangBadge(lang);
 
     updateTechiOrb('listening');
+
+    // Fast local controls
+    const lower = transcript.toLowerCase();
+    if (lower.includes('next song') || lower.includes('adutha paatu')) {
+      nextTrack();
+      this.speak("Playing next song.", lang);
+      return;
+    }
+    if (lower === 'pause' || lower.includes('pause music')) {
+      togglePlay(false);
+      this.speak("Music paused.", lang);
+      return;
+    }
 
     // Call Backend Gemini AI Engine
     try {
@@ -670,21 +789,71 @@ const TechiMaster = {
     }
   },
 
+  // Real-Time Proactive Safety & Condition Monitor Loop
   runProactiveLoop() {
+    const now = Date.now();
+
+    // 1. Initial Startup Greeting
     if (!STATE.lastGreetingDone) {
       STATE.lastGreetingDone = true;
       setTimeout(() => {
         this.handoffTo('MainAgent', 'Startup Diagnostic Announce');
-        const greeting = `Vanakkam! Techi online. Main battery ${STATE.battery.soc}%, buffer ready. Autonomous AI active!`;
+        const greeting = `Vanakkam! Techi online. Main battery ${STATE.battery.soc}%, buffer ready. Driver monitoring active!`;
         this.speak(greeting, 'tanglish');
       }, 1500);
       return;
+    }
+
+    // 2. Continuous Real-time Safety Threshold Monitoring
+    if (now - STATE.lastAlertSpeakTime > 10000 && !STATE.isSpeaking) {
+      // Driver Drowsiness Alert
+      if (STATE.wellness.isDrowsy) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('WellnessAgent', 'PROACTIVE: Driver Drowsiness Alert');
+        showNav('wellness');
+        const alertMsg = 'Kavanama irunga! Driver thookam varuthu, please vandi ah orama niruthitu rest edunga!';
+        this.speak(alertMsg, 'tanglish');
+        return;
+      }
+
+      // Battery Overheat Alert (>= 45°C)
+      if (STATE.battery.temp >= THRESH.battTemp) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('BatteryAgent', 'PROACTIVE: Battery Overheat Warning');
+        showNav('vehicle');
+        showVehicleTab('battery');
+        const alertMsg = `Warning! Battery temperature ${STATE.battery.temp} degree. Emergency cooling fans active.`;
+        this.speak(alertMsg, 'tanglish');
+        return;
+      }
+
+      // Critically Low Battery (< 20%)
+      if (STATE.battery.soc < 20) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('NavAgent', 'PROACTIVE: Low Battery Reroute');
+        showNav('gps');
+        findNearbyStations();
+        const alertMsg = `Main battery level ${STATE.battery.soc}% pochu. Nearest charging station scan panren.`;
+        this.speak(alertMsg, 'tanglish');
+        return;
+      }
+
+      // Motor High Vibration
+      if (STATE.motor.vibration >= THRESH.motorVib) {
+        STATE.lastAlertSpeakTime = now;
+        this.handoffTo('MotorAgent', 'PROACTIVE: Drivetrain Vibration Anomaly');
+        showNav('vehicle');
+        showVehicleTab('motor');
+        const alertMsg = 'Alert: Motor vibration is abnormal. Please check drivetrain.';
+        this.speak(alertMsg, 'tanglish');
+        return;
+      }
     }
   }
 };
 
 /* =========================================================================
-   3. DRIVER WELLNESS: CAMERA, DROWSINESS (EAR), MOOD & FACE ID
+   4. DRIVER WELLNESS: CAMERA, DROWSINESS (EAR), MOOD & FACE ID
    ========================================================================= */
 
 let videoEl, canvasEl, ctx;
@@ -766,7 +935,7 @@ function simulateWellnessVision() {
 }
 
 /* =========================================================================
-   4. ESP32 WEBSOCKET TELEMETRY & 22-80% BUFFER BATTERY CONTROLLER
+   5. ESP32 WEBSOCKET TELEMETRY & 22-80% BUFFER BATTERY CONTROLLER
    ========================================================================= */
 
 let espSocket = null;
@@ -825,6 +994,13 @@ function renderVehicleUI(d) {
   document.getElementById('h-buffer').querySelector('.val').textContent = (r.soc ?? '--') + '%';
   document.getElementById('h-motor').querySelector('.val').textContent = (m.temp ?? '--') + '°C';
   document.getElementById('h-rpm').querySelector('.val').textContent = (m.rpm ?? '--');
+
+  document.getElementById('m-bsoc').querySelector('.val').textContent = (b.soc ?? '--') + '%';
+  document.getElementById('m-bvolt').querySelector('.val').textContent = (b.voltage ?? '--') + 'V';
+  document.getElementById('m-btemp').querySelector('.val').textContent = (b.temp ?? '--') + '°C';
+
+  document.getElementById('m-mrpm').querySelector('.val').textContent = (m.rpm ?? '--');
+  document.getElementById('m-mtemp').querySelector('.val').textContent = (m.temp ?? '--') + '°C';
 }
 
 function activateSimulationMode() {
@@ -842,7 +1018,7 @@ function activateSimulationMode() {
 }
 
 /* =========================================================================
-   5. GPS & OVERPASS API CHARGING STATIONS
+   6. GPS & OVERPASS API CHARGING STATIONS
    ========================================================================= */
 
 let map = null, marker = null;
@@ -869,7 +1045,7 @@ async function findNearbyStations() {
 }
 
 /* =========================================================================
-   6. CONTACTS & CALL DIALER
+   7. CONTACTS & CALL DIALER
    ========================================================================= */
 
 const DEFAULT_CONTACTS = [
@@ -901,10 +1077,9 @@ function makeVoiceCall(queryName) {
 }
 
 /* =========================================================================
-   7. VOICE MUSIC & YOUTUBE AUDIO SEARCH INTEGRATION
+   8. VOICE MUSIC PLAYER
    ========================================================================= */
 
-const audioPlayer = document.getElementById('audioPlayer');
 const sampleTracks = [
   { name: 'Cyberpunk Drive (Synthwave)', url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3' },
   { name: 'Highway Night Cruise', url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=electronic-future-beats-117997.mp3' }
@@ -912,38 +1087,13 @@ const sampleTracks = [
 let curTrackIndex = 0;
 
 function setupMusicPlayer() {
+  const audioPlayer = document.getElementById('audioPlayer');
   audioPlayer.src = sampleTracks[curTrackIndex].url;
   document.getElementById('nowPlaying').textContent = 'Track: ' + sampleTracks[curTrackIndex].name;
 }
 
-function togglePlay(shouldPlay) {
-  if (shouldPlay === undefined) {
-    audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
-  } else if (shouldPlay) {
-    audioPlayer.play();
-  } else {
-    audioPlayer.pause();
-  }
-}
-
-function nextTrack() {
-  curTrackIndex = (curTrackIndex + 1) % sampleTracks.length;
-  setupMusicPlayer();
-  audioPlayer.play();
-}
-
-async function searchAndPlayYouTube(query) {
-  try {
-    const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
-    const data = await res.json();
-    if (data.items && data.items.length) {
-      document.getElementById('nowPlaying').textContent = 'YouTube Audio: ' + data.items[0].title;
-    }
-  } catch(e){}
-}
-
 /* =========================================================================
-   8. UI NAVIGATION HELPERS
+   9. UI NAVIGATION HELPERS
    ========================================================================= */
 
 function showNav(name) {
@@ -986,7 +1136,7 @@ function tickClock() {
 setInterval(tickClock, 1000); tickClock();
 
 /* =========================================================================
-   9. AUTONOMOUS INITIALIZER
+   10. AUTONOMOUS LIFECYCLE INITIALIZER & PROACTIVE SAFETY MONITOR
    ========================================================================= */
 
 function initAutonomousApp() {
@@ -998,6 +1148,12 @@ function initAutonomousApp() {
   renderContacts();
   setupMusicPlayer();
   initMap();
+
+  // Continuous Proactive Safety Loop (runs every 2.5 seconds)
+  setInterval(() => {
+    TechiMaster.runProactiveLoop();
+  }, 2500);
+
   TechiMaster.runProactiveLoop();
 }
 
