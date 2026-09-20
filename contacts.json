@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Amma",
+    "aliases": ["amma", "mother", "mom"],
+    "phone": "+919876543210"
+  },
+  {
+    "name": "Appa",
+    "aliases": ["appa", "father", "dad"],
+    "phone": "+919876543211"
+  },
+  {
+    "name": "Emergency",
+    "aliases": ["emergency", "police", "ambulance", "help"],
+    "phone": "108"
+  }
+]

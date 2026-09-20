@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Techi - AI Voice Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Fullscreen Tap to Start Overlay -->
+  <div id="start-overlay" class="overlay">
+    <div class="start-card">
+      <div class="pulse-ring"></div>
+      <h1 class="title">Techi</h1>
+      <p class="subtitle">Tap to Start Voice Assistant</p>
+    </div>
+  </div>
+
+  <!-- Single Centered AI Orb Canvas & Live Status Display -->
+  <div id="orb-container">
+    <canvas id="orb-canvas"></canvas>
+
+    <!-- Embedded Google Maps Route Card (Displayed during active navigation) -->
+    <div id="map-card" class="map-container hidden">
+      <iframe id="map-iframe" src="" frameborder="0" allowfullscreen loading="lazy"></iframe>
+    </div>
+    
+    <!-- Minimalist Status Overlay -->
+    <div id="status-panel">
+      <div id="state-badge" class="badge">🎙️ Ready</div>
+      <div id="song-badge" class="badge hidden">🎵 <span id="song-title"></span></div>
+      <div id="nav-badge" class="badge hidden">🧭 <span id="nav-info"></span></div>
+    </div>
+  </div>
+
+  <!-- Hidden YouTube Player Container (Audio Only) -->
+  <div id="youtube-player-container" style="display:none; position:absolute; width:1px; height:1px; overflow:hidden; left:-9999px;">
+    <div id="youtube-player"></div>
+  </div>
+
+  <!-- App Scripts -->
+  <script src="js/orb.js"></script>
+  <script src="js/voice.js"></script>
+  <script src="js/agents/musicAgent.js"></script>
+  <script src="js/agents/navAgent.js"></script>
+  <script src="js/agents/callAgent.js"></script>
+  <script src="js/agents/miniAgents.js"></script>
+  <script src="js/main.js"></script>
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+</body>
+</html>
