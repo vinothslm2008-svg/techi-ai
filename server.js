@@ -265,13 +265,26 @@ app.get('/api/navigation/route', async (req, res) => {
     });
   }
 
-  const { startLng, startLat, endLng, endLat } = req.query;
-  if (!startLng || !startLat || !endLng || !endLat) {
+  let sLng = req.query.startLng;
+  let sLat = req.query.startLat;
+  let eLng = req.query.endLng;
+  let eLat = req.query.endLat;
+
+  if (req.query.start && req.query.start.includes(',')) {
+    const parts = req.query.start.split(',');
+    sLng = parts[0]; sLat = parts[1];
+  }
+  if (req.query.end && req.query.end.includes(',')) {
+    const parts = req.query.end.split(',');
+    eLng = parts[0]; eLat = parts[1];
+  }
+
+  if (!sLng || !sLat || !eLng || !eLat) {
     return res.status(400).json({ error: "Missing coordinates" });
   }
 
   try {
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${startLng},${startLat}&end=${endLng},${endLat}`;
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${sLng},${sLat}&end=${eLng},${eLat}`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -282,24 +295,7 @@ app.get('/api/navigation/route', async (req, res) => {
       });
     }
 
-    const route = data.features?.[0];
-    if (!route) {
-      return res.json({ error: "NO_ROUTE", speech: "No route found to destination." });
-    }
-
-    const segments = route.properties.segments[0];
-    const steps = segments.steps.map(step => ({
-      distance: step.distance,
-      instruction: step.instruction,
-      type: step.type,
-      name: step.name
-    }));
-
-    return res.json({
-      totalDistance: segments.distance, // meters
-      totalDuration: segments.duration, // seconds
-      steps: steps
-    });
+    return res.json(data);
   } catch (err) {
     console.error("ORS route error:", err);
     return res.json({ error: "ROUTE_FETCH_FAILED", speech: "Failed to fetch directions." });

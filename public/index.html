@@ -423,6 +423,18 @@ function handleVoiceAction(action) {
   if (type === 'play_music') {
     showCard('musicCard');
     searchAndPlayYouTube(query || "Tamil hit songs");
+  } else if (type === 'pause_music' || type === 'stop_music') {
+    if (ytPlayer && ytPlayer.pauseVideo) {
+      ytPlayer.pauseVideo();
+      document.getElementById('nowPlayingTrack').textContent = "🎵 Music Paused ⏸️";
+    }
+  } else if (type === 'resume_music') {
+    if (ytPlayer && ytPlayer.playVideo) {
+      ytPlayer.playVideo();
+      document.getElementById('nowPlayingTrack').textContent = "🎵 Music Playing ▶️";
+    }
+  } else if (type === 'next_music') {
+    playNextYouTubeTrack();
   } else if (type === 'route' || type === 'google_maps') {
     showCard('mapCard');
     fetchRouteAndDrawMap(query || "Chennai");
@@ -442,6 +454,10 @@ function showCard(cardId) {
     if (id === cardId) card.classList.add('active');
     else card.classList.remove('active');
   });
+
+  if (cardId === 'mapCard' && leafletMap) {
+    setTimeout(() => leafletMap.invalidateSize(), 150);
+  }
 }
 
 // YouTube Music Search & Playback
@@ -498,15 +514,17 @@ async function fetchRouteAndDrawMap(destinationQuery) {
     }).addTo(leafletMap);
   }
 
+  setTimeout(() => leafletMap.invalidateSize(), 200);
+
   try {
     const geocodeRes = await fetch(`/api/navigation/geocode?q=${encodeURIComponent(destinationQuery)}`);
     const geocodeData = await geocodeRes.json();
     
     if (geocodeData && geocodeData.lat && geocodeData.lng) {
-      const destLat = geocodeData.lat;
-      const destLng = geocodeData.lng;
+      const destLat = parseFloat(geocodeData.lat);
+      const destLng = parseFloat(geocodeData.lng);
 
-      const routeRes = await fetch(`/api/navigation/route?start=11.0168,76.9558&end=${destLat},${destLng}`);
+      const routeRes = await fetch(`/api/navigation/route?startLng=76.9558&startLat=11.0168&endLng=${destLng}&endLat=${destLat}`);
       const routeData = await routeRes.json();
 
       if (routeData.features && routeData.features.length) {
@@ -516,13 +534,23 @@ async function fetchRouteAndDrawMap(destinationQuery) {
           style: { color: '#00e5a0', weight: 5 }
         }).addTo(leafletMap);
 
-        leafletMap.fitBounds(leafletRouteLayer.getBounds());
+        // Add markers
+        L.marker([11.0168, 76.9558]).addTo(leafletMap).bindPopup("Current Location");
+        L.marker([destLat, destLng]).addTo(leafletMap).bindPopup(geocodeData.name);
+
+        leafletMap.fitBounds(leafletRouteLayer.getBounds(), { padding: [30, 30] });
         
         const summary = routeData.features[0].properties.summary;
         const distKm = (summary.distance / 1000).toFixed(1);
         const durationMin = Math.round(summary.duration / 60);
         navText.textContent = `📍 Route to ${geocodeData.name}: ${distKm} km (${durationMin} mins)`;
+      } else {
+        navText.textContent = `📍 Destination: ${geocodeData.name} (${destLat.toFixed(3)}, ${destLng.toFixed(3)})`;
+        leafletMap.setView([destLat, destLng], 13);
+        L.marker([destLat, destLng]).addTo(leafletMap).bindPopup(geocodeData.name).openPopup();
       }
+    } else {
+      navText.textContent = `Route location search for ${destinationQuery}`;
     }
   } catch (e) {
     console.error("Map error:", e);
