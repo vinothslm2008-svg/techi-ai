@@ -4,85 +4,119 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Techi Live Voice AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root {
   --bg: #070a0f;
+  --panel: #111822;
+  --panel2: #17212e;
   --accent: #00e5a0;
   --accent-glow: rgba(0, 229, 160, 0.4);
+  --accent2: #00b8ff;
   --magenta: #ff79c6;
   --magenta-glow: rgba(255, 121, 198, 0.5);
   --gold: #ffd166;
   --gold-glow: rgba(255, 209, 102, 0.6);
   --text: #eef3f7;
   --muted: #7a8b9e;
+  --border: #223042;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body {
-  margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh;
+  margin: 0; padding: 0; width: 100%; min-height: 100vh;
   background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  overflow: hidden; user-select: none;
+  display: flex; flex-direction: column; align-items: center;
+  overflow-x: hidden; user-select: none;
+}
+
+#app-container {
+  width: 100%; max-width: 480px; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 16px; position: relative;
+  background: radial-gradient(circle at 50% 30%, #101926 0%, #070a0f 70%);
 }
 
 /* Background Ambient Glow */
 .ambient-glow {
-  position: absolute; width: 350px; height: 350px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 229, 160, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  position: absolute; top: 120px; width: 320px; height: 320px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 229, 160, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
   pointer-events: none; filter: blur(40px); animation: ambientPulse 6s ease-in-out infinite;
+  z-index: 1;
 }
 @keyframes ambientPulse { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.3); opacity: 0.8; } }
 
-/* Title Header */
-.top-title {
-  position: absolute; top: 30px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+/* Header & Status Indicator */
+.top-header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: rgba(17, 24, 34, 0.8); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); border-radius: 20px; z-index: 20; margin-bottom: 12px;
 }
-.top-title h1 {
-  margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 1px; color: var(--text); opacity: 0.9;
+.brand-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.live-badge {
+  display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px;
+  background: rgba(0, 229, 160, 0.12); border: 1px solid var(--accent);
+  font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase;
 }
-.top-title span {
-  font-size: 11px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase;
+.live-badge .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 8px var(--accent); animation: blinkDot 1.5s infinite;
+}
+@keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Process Status Banner (Listening / Thinking / Speaking / Music / Nav) */
+.process-banner {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 20px;
+  padding: 8px 16px; font-size: 12px; font-weight: 600; color: var(--muted);
+  transition: all 0.3s ease; z-index: 20; margin-bottom: 10px;
+}
+.process-banner.listening { border-color: var(--magenta); color: var(--magenta); background: rgba(255,121,198,0.1); }
+.process-banner.thinking { border-color: var(--accent2); color: var(--accent2); background: rgba(0,184,255,0.1); }
+.process-banner.speaking { border-color: var(--gold); color: var(--gold); background: rgba(255,209,102,0.1); }
+
+/* Center Interactive Orb Section */
+.hero-orb-section {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: 16px 0; z-index: 10; width: 100%;
 }
 
-/* Center Interactive Orb */
 .orb-container {
-  position: relative; width: 220px; height: 220px;
+  position: relative; width: 180px; height: 180px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 10;
+  cursor: pointer;
 }
 
-/* Outer Pulsing Rings */
 .ring {
-  position: absolute; border-radius: 50%; border: 1px solid rgba(0, 229, 160, 0.2);
+  position: absolute; border-radius: 50%; border: 1px solid rgba(0, 229, 160, 0.25);
   pointer-events: none; transition: all 0.5s ease;
 }
-.ring-1 { width: 220px; height: 220px; animation: rotateRing 15s linear infinite; border-dasharray: 8 6; }
-.ring-2 { width: 180px; height: 180px; animation: rotateRingRev 10s linear infinite; border-color: rgba(0, 184, 255, 0.25); }
+.ring-1 { width: 180px; height: 180px; animation: rotateRing 15s linear infinite; border-dasharray: 8 6; }
+.ring-2 { width: 148px; height: 148px; animation: rotateRingRev 10s linear infinite; border-color: rgba(0, 184, 255, 0.3); }
 
 @keyframes rotateRing { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes rotateRingRev { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
 
-/* Core Glowing Orb */
 .core-orb {
-  width: 140px; height: 140px; border-radius: 50%;
+  width: 115px; height: 115px; border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #00e5a0, #0077ff);
-  box-shadow: 0 0 50px var(--accent-glow), inset 0 0 20px rgba(255,255,255,0.4);
-  display: flex; align-items: center; justify-content: center; font-size: 50px;
+  box-shadow: 0 0 45px var(--accent-glow), inset 0 0 20px rgba(255,255,255,0.4);
+  display: flex; align-items: center; justify-content: center; font-size: 42px;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   animation: idleOrb 3s ease-in-out infinite;
 }
 
 @keyframes idleOrb {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 45px var(--accent-glow); }
-  50% { transform: scale(1.06); box-shadow: 0 0 65px var(--accent-glow); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px var(--accent-glow); }
+  50% { transform: scale(1.06); box-shadow: 0 0 60px var(--accent-glow); }
 }
 
-/* State Animations */
 .core-orb.listening {
   background: radial-gradient(circle at 35% 35%, #ff79c6, #b388ff);
-  box-shadow: 0 0 70px var(--magenta-glow);
+  box-shadow: 0 0 65px var(--magenta-glow);
   animation: listeningOrb 0.7s ease-in-out infinite alternate;
 }
 @keyframes listeningOrb {
@@ -92,7 +126,7 @@ html, body {
 
 .core-orb.speaking {
   background: radial-gradient(circle at 35% 35%, #00e5a0, #ffd166);
-  box-shadow: 0 0 85px var(--gold-glow);
+  box-shadow: 0 0 75px var(--gold-glow);
   animation: speakingOrb 0.4s ease-in-out infinite alternate;
 }
 @keyframes speakingOrb {
@@ -100,78 +134,227 @@ html, body {
   to { transform: scale(1.18); filter: brightness(1.35); }
 }
 
-/* Status Text below Orb */
-.status-text {
-  position: absolute; bottom: 80px; text-align: center;
-  font-size: 14px; font-weight: 500; color: var(--muted);
-  max-width: 80%; line-height: 1.4; transition: color 0.3s ease;
+/* Audio Wave Visualizer Bars */
+.wave-bars {
+  display: flex; align-items: center; gap: 4px; height: 24px; margin-top: 14px;
 }
-.status-text.active { color: var(--accent); }
+.wave-bar {
+  width: 4px; height: 8px; background: var(--accent); border-radius: 4px;
+  transition: height 0.15s ease;
+}
+.wave-bars.active .wave-bar { animation: waveAnim 0.8s infinite alternate; }
+.wave-bars.active .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+.wave-bars.active .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+.wave-bars.active .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+.wave-bars.active .wave-bar:nth-child(5) { animation-delay: 0.6s; }
 
-/* Tap Instruction Hint */
-.tap-hint {
-  position: absolute; bottom: 40px; font-size: 11px; color: var(--muted);
-  letter-spacing: 1px; text-transform: uppercase; opacity: 0.6;
+@keyframes waveAnim { 0% { height: 6px; } 100% { height: 24px; } }
+
+/* Spoken Text Response Box */
+.response-box {
+  margin-top: 10px; background: rgba(17, 24, 34, 0.9); border: 1px solid var(--border);
+  border-radius: 16px; padding: 12px 16px; text-align: center; font-size: 13px;
+  line-height: 1.4; color: var(--text); min-height: 52px; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Dynamic Content Cards (Music / Map / Calls) */
+.dynamic-container { width: 100%; z-index: 15; margin-top: 10px; }
+
+.content-card {
+  display: none; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 16px; padding: 14px; margin-bottom: 12px; width: 100%;
+  animation: fadeInCard 0.3s ease;
+}
+.content-card.active { display: block; }
+@keyframes fadeInCard { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.content-card h3 {
+  margin: 0 0 10px; font-size: 11px; color: var(--accent2); text-transform: uppercase;
+  letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center;
+}
+
+#map { width: 100%; height: 180px; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; }
+
+/* Contact Items Grid */
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.contact-item {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px; display: flex; align-items: center; justify-content: space-between;
+}
+.contact-item .n { font-weight: 700; font-size: 13px; }
+.contact-item .p { font-size: 10px; color: var(--muted); }
+.call-btn {
+  background: var(--accent); color: #052018; border: none; border-radius: 50%;
+  width: 32px; height: 32px; font-size: 14px; cursor: pointer; text-decoration: none;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Bottom Controls */
+.bottom-bar { width: 100%; z-index: 20; margin-top: 10px; }
+.tap-hint-footer {
+  text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 8px;
 }
 </style>
 </head>
 <body>
 
-<div class="ambient-glow"></div>
+<div id="app-container">
+  <div class="ambient-glow"></div>
 
-<div class="top-title">
-  <h1>TECHIS AI</h1>
-  <span>Live Voice Intelligence • Tamil • Tanglish • English</span>
+  <!-- Header -->
+  <div class="top-header">
+    <div class="brand-title">🤖 TECHI AI</div>
+    <div class="live-badge">
+      <div class="dot"></div>
+      <span>Live Voice</span>
+    </div>
+  </div>
+
+  <!-- Process Status Banner -->
+  <div class="process-banner" id="processBanner">
+    <span id="processIcon">🎙️</span>
+    <span id="processLabel">Tap Orb to Start Live Conversation</span>
+  </div>
+
+  <!-- Hero Orb Section -->
+  <div class="hero-orb-section">
+    <div class="orb-container" onclick="toggleVoiceSession()">
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="core-orb" id="techiOrb">🎙️</div>
+    </div>
+
+    <!-- Live Audio Wave Spectrum -->
+    <div class="wave-bars" id="waveBars">
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+
+    <!-- Live Spoken Response Box -->
+    <div class="response-box" id="responseBox">
+      Vanakkam bro! I am Techi AI. Talk to me live in Tamil, Tanglish or English!
+    </div>
+  </div>
+
+  <!-- Dynamic Content Cards (Music / Navigation / Contacts) -->
+  <div class="dynamic-container">
+
+    <!-- 1. Music Player Card -->
+    <div class="content-card" id="musicCard">
+      <h3>🎵 YOUTUBE MUSIC PLAYER</h3>
+      <div id="nowPlayingTrack" style="font-weight:700; color:var(--accent); font-size:13px; margin-bottom:8px;">
+        Track: Idle
+      </div>
+      <div id="playlistQueue" style="max-height:100px; overflow-y:auto;"></div>
+    </div>
+
+    <!-- 2. Navigation Map Card -->
+    <div class="content-card" id="mapCard">
+      <h3>🗺️ OPENROUTE GPS NAVIGATION</h3>
+      <div id="navDetailsText" style="font-size:11px; color:var(--muted); margin-bottom:6px;">
+        Route Details
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!-- 3. Speed Dial Contact Card -->
+    <div class="content-card" id="contactCard">
+      <h3>📞 SPEED DIAL CONTACTS</h3>
+      <div class="contact-grid">
+        <div class="contact-item">
+          <div>
+            <div class="n">Amma</div>
+            <div class="p">+917845987975</div>
+          </div>
+          <a href="tel:+917845987975" class="call-btn">📞</a>
+        </div>
+        <div class="contact-item">
+          <div>
+            <div class="n">Appa</div>
+            <div class="p">+919385497082</div>
+          </div>
+          <a href="tel:+919385497082" class="call-btn">📞</a>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /dynamic-container -->
+
+  <!-- Footer -->
+  <div class="bottom-bar">
+    <div class="tap-hint-footer">Handsfree Continuous Voice Mode • Gemini 3.6 Flash Engine</div>
+  </div>
 </div>
 
-<!-- Center Glowing Live Orb -->
-<div class="orb-container" onclick="toggleVoiceSession()">
-  <div class="ring ring-1"></div>
-  <div class="ring ring-2"></div>
-  <div class="core-orb" id="techiOrb">🎙️</div>
+<!-- Hidden YouTube Player Container -->
+<div id="youtube-player-container" style="display:none; position:absolute; width:1px; height:1px; overflow:hidden; left:-9999px;">
+  <div id="youtube-player"></div>
 </div>
 
-<div class="status-text" id="statusText">Tap Orb to Start Live Conversation</div>
-<div class="tap-hint">Handsfree Continuous Voice Mode</div>
+<script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
 /* =========================================================================
-   LIVE VOICE AI ENGINE (STANDALONE PURE ORB INTERACTION)
+   LIVE VOICE AI ENGINE WITH DYNAMIC CONTENT & PROCESS MONITORING
    ========================================================================= */
 
 let isListening = false;
 let isSpeaking = false;
 let recognition = null;
 let speechSynth = window.speechSynthesis;
+let leafletMap = null;
+let leafletRouteLayer = null;
+let ytPlayer = null;
+let youtubeQueue = [];
+let ytCurrentIndex = 0;
 
-// Web Speech API Initialization
+// Initialize YouTube Engine
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('youtube-player', {
+    height: '1', width: '1',
+    playerVars: { autoplay: 1, controls: 0 },
+    events: {
+      onReady: () => console.log("YouTube Engine Ready"),
+      onStateChange: (e) => {
+        if (e.data === 0) playNextYouTubeTrack();
+      }
+    }
+  });
+};
+
+// Web Speech API Setup
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRec();
   recognition.continuous = false;
   recognition.interimResults = false;
-  recognition.lang = 'en-IN'; // Works seamlessly for Tamil, Tanglish & English
+  recognition.lang = 'en-IN'; // Tamil, Tanglish & English support
 
   recognition.onstart = () => {
     isListening = true;
-    setOrbState('listening', 'Listening...');
+    updateProcessState('listening', '👂 LISTENING...', 'Listening to your voice...');
   };
 
   recognition.onresult = async (event) => {
     const transcript = event.results[0][0].transcript;
-    console.log("User Spoke:", transcript);
+    document.getElementById('responseBox').textContent = `" ${transcript} "`;
     processLiveVoiceInput(transcript);
   };
 
   recognition.onerror = (e) => {
     console.warn("Speech Error:", e.error);
     isListening = false;
-    if (!isSpeaking) setOrbState('idle', 'Tap Orb to talk');
+    if (!isSpeaking) updateProcessState('idle', '🎙️ READY', 'Tap Orb to talk');
   };
 
   recognition.onend = () => {
     isListening = false;
-    if (!isSpeaking) setOrbState('idle', 'Tap Orb to talk');
+    if (!isSpeaking) updateProcessState('idle', '🎙️ READY', 'Tap Orb to talk');
   };
 }
 
@@ -182,14 +365,14 @@ function toggleVoiceSession() {
   }
 
   if (!recognition) {
-    alert("Voice Speech Recognition not supported on this browser.");
+    alert("Speech Recognition not supported in this browser.");
     return;
   }
 
   if (isListening) {
     recognition.stop();
     isListening = false;
-    setOrbState('idle', 'Tap Orb to talk');
+    updateProcessState('idle', '🎙️ READY', 'Tap Orb to talk');
   } else {
     startListening();
   }
@@ -205,8 +388,9 @@ function startListening() {
   }
 }
 
+// Core API Processing
 async function processLiveVoiceInput(text) {
-  setOrbState('thinking', 'Thinking...');
+  updateProcessState('thinking', '🧠 THINKING...', 'Processing intent...');
 
   try {
     const response = await fetch('/api/chat', {
@@ -216,15 +400,137 @@ async function processLiveVoiceInput(text) {
     });
 
     const data = await response.json();
-    const spokenReply = data.speech || "Super bro!";
-    
+    console.log("Techi AI Response:", data);
+
+    const spokenReply = data.speech || "Done bro!";
+    document.getElementById('responseBox').textContent = spokenReply;
     speakLiveTTS(spokenReply);
+
+    // Handle Content Action (Music / Map / Calls)
+    if (data.action) {
+      handleVoiceAction(data.action);
+    }
   } catch(err) {
     console.error("AI Error:", err);
     speakLiveTTS("Connection error bro. Try again!");
   }
 }
 
+// Action Dispatcher
+function handleVoiceAction(action) {
+  const { type, query } = action;
+
+  if (type === 'play_music') {
+    showCard('musicCard');
+    searchAndPlayYouTube(query || "Tamil hit songs");
+  } else if (type === 'route' || type === 'google_maps') {
+    showCard('mapCard');
+    fetchRouteAndDrawMap(query || "Chennai");
+  } else if (type === 'make_call') {
+    showCard('contactCard');
+    if (query && query.toLowerCase().includes('amma')) {
+      window.location.href = "tel:+917845987975";
+    } else if (query && query.toLowerCase().includes('appa')) {
+      window.location.href = "tel:+919385497082";
+    }
+  }
+}
+
+function showCard(cardId) {
+  ['musicCard', 'mapCard', 'contactCard'].forEach(id => {
+    const card = document.getElementById(id);
+    if (id === cardId) card.classList.add('active');
+    else card.classList.remove('active');
+  });
+}
+
+// YouTube Music Search & Playback
+async function searchAndPlayYouTube(query) {
+  try {
+    const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (data.items && data.items.length) {
+      youtubeQueue = data.items;
+      ytCurrentIndex = 0;
+      playCurrentYouTubeTrack();
+    }
+  } catch (e) {
+    console.error("YouTube search error:", e);
+  }
+}
+
+function playCurrentYouTubeTrack() {
+  const track = youtubeQueue[ytCurrentIndex];
+  if (!track) return;
+  if (ytPlayer && ytPlayer.loadVideoById) {
+    ytPlayer.loadVideoById(track.videoId);
+    document.getElementById('nowPlayingTrack').textContent = `🎵 Playing: ${track.title}`;
+    
+    const pl = document.getElementById('playlistQueue');
+    pl.innerHTML = youtubeQueue.map((t, i) => `
+      <div style="font-size:11px;padding:3px 0;color:${i === ytCurrentIndex ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;" onclick="playSelectedYouTubeIndex(${i})">
+        ${i === ytCurrentIndex ? '▶' : '•'} ${t.title}
+      </div>
+    `).join('');
+  }
+}
+
+function playSelectedYouTubeIndex(i) {
+  ytCurrentIndex = i;
+  playCurrentYouTubeTrack();
+}
+
+function playNextYouTubeTrack() {
+  if (!youtubeQueue.length) return;
+  ytCurrentIndex = (ytCurrentIndex + 1) % youtubeQueue.length;
+  playCurrentYouTubeTrack();
+}
+
+// OpenRouteService Map & Routing
+async function fetchRouteAndDrawMap(destinationQuery) {
+  const navText = document.getElementById('navDetailsText');
+  navText.textContent = `Searching route to ${destinationQuery}...`;
+
+  if (!leafletMap) {
+    leafletMap = L.map('map').setView([11.0168, 76.9558], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(leafletMap);
+  }
+
+  try {
+    const geocodeRes = await fetch(`/api/navigation/geocode?q=${encodeURIComponent(destinationQuery)}`);
+    const geocodeData = await geocodeRes.json();
+    
+    if (geocodeData && geocodeData.lat && geocodeData.lng) {
+      const destLat = geocodeData.lat;
+      const destLng = geocodeData.lng;
+
+      const routeRes = await fetch(`/api/navigation/route?start=11.0168,76.9558&end=${destLat},${destLng}`);
+      const routeData = await routeRes.json();
+
+      if (routeData.features && routeData.features.length) {
+        if (leafletRouteLayer) leafletMap.removeLayer(leafletRouteLayer);
+        
+        leafletRouteLayer = L.geoJSON(routeData.features[0], {
+          style: { color: '#00e5a0', weight: 5 }
+        }).addTo(leafletMap);
+
+        leafletMap.fitBounds(leafletRouteLayer.getBounds());
+        
+        const summary = routeData.features[0].properties.summary;
+        const distKm = (summary.distance / 1000).toFixed(1);
+        const durationMin = Math.round(summary.duration / 60);
+        navText.textContent = `📍 Route to ${geocodeData.name}: ${distKm} km (${durationMin} mins)`;
+      }
+    }
+  } catch (e) {
+    console.error("Map error:", e);
+    navText.textContent = `Route navigation active for ${destinationQuery}`;
+  }
+}
+
+// Text-to-Speech Output
 function speakLiveTTS(text) {
   if (!speechSynth) return;
 
@@ -245,39 +551,54 @@ function speakLiveTTS(text) {
 
   utterance.onstart = () => {
     isSpeaking = true;
-    setOrbState('speaking', text);
+    updateProcessState('speaking', '🗣️ SPEAKING...', text);
   };
 
   utterance.onend = utterance.onerror = () => {
     isSpeaking = false;
-    setOrbState('idle', 'Tap Orb to talk');
-    // Automatically resume handsfree listening loop
+    updateProcessState('idle', '🎙️ READY', 'Tap Orb to talk');
+    // Handsfree continuous listening loop
     setTimeout(() => startListening(), 800);
   };
 
   speechSynth.speak(utterance);
 }
 
-function setOrbState(state, textMsg) {
+// Process State & UI Updater
+function updateProcessState(state, iconLabelText, detailText) {
   const orb = document.getElementById('techiOrb');
-  const label = document.getElementById('statusText');
+  const banner = document.getElementById('processBanner');
+  const icon = document.getElementById('processIcon');
+  const label = document.getElementById('processLabel');
+  const waveBars = document.getElementById('waveBars');
 
   orb.className = 'core-orb';
-  label.textContent = textMsg || '';
-  label.className = 'status-text';
+  banner.className = 'process-banner';
+  waveBars.classList.remove('active');
 
   if (state === 'listening') {
     orb.classList.add('listening');
+    banner.classList.add('listening');
     orb.textContent = '👂';
-    label.classList.add('active');
+    icon.textContent = '👂';
+    label.textContent = 'LISTENING...';
+    waveBars.classList.add('active');
   } else if (state === 'speaking') {
     orb.classList.add('speaking');
+    banner.classList.add('speaking');
     orb.textContent = '🗣️';
-    label.classList.add('active');
+    icon.textContent = '🗣️';
+    label.textContent = 'SPEAKING...';
+    waveBars.classList.add('active');
   } else if (state === 'thinking') {
+    banner.classList.add('thinking');
     orb.textContent = '🧠';
+    icon.textContent = '🧠';
+    label.textContent = 'THINKING...';
   } else {
     orb.textContent = '🎙️';
+    icon.textContent = '🎙️';
+    label.textContent = 'TAP ORB TO TALK';
   }
 }
 </script>
