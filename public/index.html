@@ -214,8 +214,8 @@ html, body {
 
   <!-- Process Status Banner -->
   <div class="process-banner" id="processBanner">
-    <span id="processIcon">🎙️</span>
-    <span id="processLabel">Tap Orb to Start Live Conversation</span>
+    <span id="processIcon">⚡</span>
+    <span id="processLabel">AUTOMATIC HANDSFREE AI ACTIVE</span>
   </div>
 
   <!-- Hero Orb Section -->
@@ -584,9 +584,9 @@ function speakLiveTTS(text) {
 
   utterance.onend = utterance.onerror = () => {
     isSpeaking = false;
-    updateProcessState('idle', '🎙️ READY', 'Tap Orb to talk');
-    // Handsfree continuous listening loop
-    setTimeout(() => startListening(), 800);
+    updateProcessState('idle', '⚡ AUTOMATIC HANDSFREE ACTIVE', 'Listening continuously...');
+    // Immediate automatic handsfree listening loop continuation
+    setTimeout(() => startListening(), 300);
   };
 
   speechSynth.speak(utterance);
@@ -624,11 +624,21 @@ function updateProcessState(state, iconLabelText, detailText) {
     icon.textContent = '🧠';
     label.textContent = 'THINKING...';
   } else {
-    orb.textContent = '🎙️';
-    icon.textContent = '🎙️';
-    label.textContent = 'TAP ORB TO TALK';
+    orb.textContent = '⚡';
+    icon.textContent = '⚡';
+    label.textContent = 'AUTOMATIC HANDSFREE ACTIVE';
   }
 }
+
+// Automatic Auto-Start Handsfree Speech Recognition Loop
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => startListening(), 500);
+});
+
+// Auto-start on any initial page touch/click if browser blocks autoplay
+window.addEventListener('click', () => {
+  if (!isListening && !isSpeaking) startListening();
+}, { once: false });
 </script>
 
 </body>
